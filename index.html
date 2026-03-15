@@ -187,6 +187,13 @@
     .btn-warning{background:var(--warning);color:white;} .btn-warning:hover{filter:brightness(1.1);}
     .btn-outline{background:transparent;color:var(--navy);border:1.5px solid var(--navy);} .btn-outline:hover{background:var(--navy);color:white;}
     .btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border-strong);} .btn-ghost:hover{background:var(--bg);}
+    .condition-opt{transition:all .2s;}
+    .condition-opt.selected{border-color:var(--navy) !important;background:var(--navy) !important;color:white !important;}
+    .condition-excellent{color:#059669;font-weight:600;}
+    .condition-good{color:#0284c7;font-weight:600;}
+    .condition-fair{color:#d97706;font-weight:600;}
+    .condition-poor{color:#dc2626;font-weight:600;}
+    .condition-damaged{color:#dc2626;font-weight:800;text-decoration:underline;}
     .btn-sm{padding:5px 12px;font-size:12px;} .btn-xs{padding:3px 9px;font-size:11px;border-radius:6px;font-weight:600;}
     .filter-pill{padding:6px 15px;border-radius:20px;border:1px solid var(--border-strong);background:white;font-size:12.5px;cursor:pointer;color:var(--text-muted);transition:all .15s;font-weight:500;}
     .filter-pill:hover{border-color:var(--navy);color:var(--navy);}
@@ -319,15 +326,39 @@
     .sidebar-backdrop.open{display:block;}
     @media(max-width:768px){
       .hamburger{display:flex;}
-      .sidebar{transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
+      .sidebar{transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);width:280px;z-index:200;}
       .sidebar.open{transform:translateX(0);}
+      .sidebar-backdrop{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:199;}
+      .sidebar-backdrop.open{display:block;}
       .main-content{margin-left:0;}
       .form-grid{grid-template-columns:1fr;}
       .form-grid.three{grid-template-columns:1fr;}
-      .page-content{padding:18px 16px;}
-      .topbar{padding:12px 16px;}
+      .page-content{padding:16px;}
+      .topbar{padding:10px 16px;}
+      .topbar h1{font-size:15px;}
       .stats-grid{grid-template-columns:repeat(2,1fr);}
+      .equip-grid{grid-template-columns:1fr;}
+      .filter-bar{flex-direction:column;gap:8px;}
+      .filter-bar select,.filter-bar input{width:100%;}
+      .card{border-radius:var(--radius-sm);}
+      .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+      table{min-width:600px;font-size:12px;}
+      .modal{width:95vw !important;max-width:95vw !important;max-height:90vh;overflow-y:auto;padding:20px !important;border-radius:14px !important;}
+      .modal.wide{width:95vw !important;}
+      .modal h2{font-size:17px;}
+      .cal-grid{grid-template-columns:repeat(7,1fr);gap:1px;}
+      .cal-cell{min-height:50px;padding:3px;font-size:10px;}
+      .cal-event{font-size:8px;padding:1px 3px;}
+      .cal-day-name{font-size:9px;}
       .notif-panel{width:calc(100vw - 32px);right:-8px;}
+      .login-card{padding:32px 24px;width:95vw;}
+      .btn{padding:8px 14px;font-size:13px;}
+      .btn-sm{padding:5px 10px;font-size:11px;}
+    }
+    @media(max-width:400px){
+      .stats-grid{grid-template-columns:1fr;}
+      .topbar-right{gap:8px;}
+      .topbar-date{display:none;}
     }
   </style>
 </head>
@@ -978,6 +1009,33 @@
   </div>
 </div>
 
+<!-- Condition Check Modal -->
+<div class="modal-overlay" id="modal-condition">
+  <div class="modal">
+    <h2>📋 Equipment Condition Check</h2>
+    <input type="hidden" id="condition-booking-id"/>
+    <div id="condition-equip-info" style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);"></div>
+    <div class="field">
+      <label>Condition on Return</label>
+      <div id="condition-options" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="btn btn-sm condition-opt" data-val="excellent" onclick="selectCondition('excellent')" style="border:2px solid transparent;">✅ Excellent</button>
+        <button class="btn btn-sm condition-opt" data-val="good" onclick="selectCondition('good')" style="border:2px solid transparent;">👍 Good</button>
+        <button class="btn btn-sm condition-opt" data-val="fair" onclick="selectCondition('fair')" style="border:2px solid transparent;">⚠️ Fair</button>
+        <button class="btn btn-sm condition-opt" data-val="poor" onclick="selectCondition('poor')" style="border:2px solid transparent;">🔴 Poor</button>
+        <button class="btn btn-sm condition-opt" data-val="damaged" onclick="selectCondition('damaged')" style="border:2px solid transparent;">🛑 Damaged</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes (optional — describe any issues)</label>
+      <textarea id="condition-notes" placeholder="e.g. Small scratch on lens, missing lens cap…" style="min-height:70px"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-condition')">Cancel</button>
+      <button class="btn btn-gold" onclick="submitConditionAndReturn()">✓ Confirm Return</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -1007,8 +1065,8 @@ function sbToEquip(r)   { return { id:r.id, name:r.name, category:r.category, it
 function equipToSb(e)   { return { id:e.id, name:e.name, category:e.category, item_type:e.itemType||null, location:e.location, status:e.status, serial:e.serial||null, asset_id:e.assetId||null, manufacturer:e.manufacturer||null, model:e.model||null, description:e.description||null, maintenance_note:e.maintenanceNote||null, maintenance_return_date:e.maintenanceReturnDate||null, photo_url:e.photoUrl||null }; }
 function sbToAudit(r)   { return { id:r.id, userId:r.user_id, userName:r.user_name||'', action:r.action, entityType:r.entity_type, entityId:r.entity_id||'', entityName:r.entity_name||'', details:r.details||'', createdAt:r.created_at }; }
 function auditToSb(a)   { return { id:a.id, user_id:a.userId, user_name:a.userName||null, action:a.action, entity_type:a.entityType, entity_id:a.entityId||null, entity_name:a.entityName||null, details:a.details||null }; }
-function sbToBooking(r) { return { id:r.id, userId:r.user_id, userName:r.user_name||'', studentId:r.student_id||'', prefix:r.prefix||'', equipmentId:r.equipment_id, dateFrom:r.date_from, dateTo:r.date_to, notes:r.notes||'', status:r.status, teacherNote:r.teacher_note||'', resolvedBy:r.resolved_by||null, resolvedAt:r.resolved_at||null, returnedAt:r.returned_at||null, returnedBy:r.returned_by||null, createdAt:r.created_at }; }
-function bookingToSb(b) { return { id:b.id, user_id:b.userId, user_name:b.userName||null, student_id:b.studentId||null, prefix:b.prefix||null, equipment_id:b.equipmentId, date_from:b.dateFrom, date_to:b.dateTo, notes:b.notes||null, status:b.status, teacher_note:b.teacherNote||null, resolved_by:b.resolvedBy||null, resolved_at:b.resolvedAt||null, returned_at:b.returnedAt||null, returned_by:b.returnedBy||null, created_at:b.createdAt }; }
+function sbToBooking(r) { return { id:r.id, userId:r.user_id, userName:r.user_name||'', studentId:r.student_id||'', prefix:r.prefix||'', equipmentId:r.equipment_id, dateFrom:r.date_from, dateTo:r.date_to, notes:r.notes||'', status:r.status, teacherNote:r.teacher_note||'', resolvedBy:r.resolved_by||null, resolvedAt:r.resolved_at||null, returnedAt:r.returned_at||null, returnedBy:r.returned_by||null, conditionOnReturn:r.condition_on_return||'', conditionNotes:r.condition_notes||'', createdAt:r.created_at }; }
+function bookingToSb(b) { return { id:b.id, user_id:b.userId, user_name:b.userName||null, student_id:b.studentId||null, prefix:b.prefix||null, equipment_id:b.equipmentId, date_from:b.dateFrom, date_to:b.dateTo, notes:b.notes||null, status:b.status, teacher_note:b.teacherNote||null, resolved_by:b.resolvedBy||null, resolved_at:b.resolvedAt||null, returned_at:b.returnedAt||null, returned_by:b.returnedBy||null, condition_on_return:b.conditionOnReturn||null, condition_notes:b.conditionNotes||null, created_at:b.createdAt }; }
 function sbToNotif(r)   { return { id:r.id, userId:r.user_id, message:r.message, type:r.type||'info', bookingId:r.booking_id||null, read:r.read||false, createdAt:r.created_at }; }
 function notifToSb(n)   { return { id:n.id, user_id:n.userId, message:n.message, type:n.type||'info', booking_id:n.bookingId||null, read:n.read||false, created_at:n.createdAt }; }
 
@@ -1573,15 +1631,7 @@ function openReturnModal(bookingId){
 }
 
 function confirmReturn(){
-  const b=DB.bookings.find(x=>x.id===actionBookingId); if(!b) return;
-  b.status='returned'; b.returnedAt=Date.now(); b.returnedBy=currentUser.name;
-  const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
-  createNotification(b.userId, `📦 ${eq.name} has been marked as returned. Thanks!`, 'returned', b.id);
-  addAuditLog('return','booking',b.id,eq.name||'?',`Returned by ${b.userName||'?'}`);
-  saveDB();
-  closeModal('modal-return');
-  toast('Equipment marked as returned.','success');
-  renderStaffApprovals(); renderStaffHome();
+  openConditionModal(actionBookingId);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2284,16 +2334,16 @@ function renderAdminBookings(){
   // Render thead
   const bTh=(label,col,w)=>{const active=bookingsSort.col===col;return `<th class="sortable${active?' sort-'+bookingsSort.dir:''}" onclick="setBookingsSort('${col}')" style="width:${w}">${label}</th>`;};
   const head=document.getElementById('admin-bookings-head');
-  if(head){head.closest('table').style.tableLayout='fixed';head.innerHTML=`<tr>${bTh('Student','student','13%')}${bTh('Student ID','studentId','10%')}${bTh('Equipment','equipment','20%')}${bTh('Location','location','13%')}${bTh('From','from','9%')}${bTh('To','to','9%')}${bTh('Status','status','10%')}<th style="width:16%">Actions</th></tr>`;}
+  if(head){head.closest('table').style.tableLayout='fixed';head.innerHTML=`<tr>${bTh('Student','student','13%')}${bTh('Student ID','studentId','10%')}${bTh('Equipment','equipment','20%')}${bTh('Location','location','13%')}${bTh('From','from','9%')}${bTh('To','to','9%')}${bTh('Status','status','10%')}<th style="width:10%">Condition</th><th style="width:12%">Actions</th></tr>`;}
   const tbody=document.getElementById('admin-bookings-table');
-  if(!list.length){ tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">📋</div><p>No bookings found</p></div></td></tr>`; return; }
+  if(!list.length){ tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div><p>No bookings found</p></div></td></tr>`; return; }
   tbody.innerHTML=list.map(b=>{
     const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
     let actions='';
     if(b.status==='pending') actions=`<button class="btn btn-xs btn-success" onclick="openApproveModal('${b.id}')">Review</button>`;
     else if(b.status==='approved') actions=`<button class="btn btn-xs btn-outline" onclick="openReturnModal('${b.id}')">Returned</button>`;
     else actions='—';
-    return `<tr><td><strong>${esc(b.userName)}</strong></td><td>${esc(b.studentId)||'-'}</td><td><strong>${esc(eq.name)||'Unknown'}</strong><br/><span class="text-muted">${esc(eq.serial)||''}</span></td><td>${esc(eq.location)||'-'}</td><td>${fmtDate(b.dateFrom)}</td><td>${fmtDate(b.dateTo)}</td><td><span class="badge badge-${esc(b.status)}">${esc(b.status)}</span></td><td>${actions}</td></tr>`;
+    return `<tr><td><strong>${esc(b.userName)}</strong></td><td>${esc(b.studentId)||'-'}</td><td><strong>${esc(eq.name)||'Unknown'}</strong><br/><span class="text-muted">${esc(eq.serial)||''}</span></td><td>${esc(eq.location)||'-'}</td><td>${fmtDate(b.dateFrom)}</td><td>${fmtDate(b.dateTo)}</td><td><span class="badge badge-${esc(b.status)}">${esc(b.status)}</span></td><td>${b.conditionOnReturn?`<span class="condition-${esc(b.conditionOnReturn)}">${esc(b.conditionOnReturn)}</span>${b.conditionNotes?`<br/><span style="font-size:11px;color:var(--text-muted)">${esc(b.conditionNotes)}</span>`:''}`:'—'}</td><td>${actions}</td></tr>`;
   }).join('');
 }
 
@@ -2471,6 +2521,77 @@ function cancelStudentBooking(bookingId){
   addAuditLog('reject','booking',bookingId,DB.equipment.find(e=>e.id===b.equipmentId)?.name||'?','Cancelled by student');
 }
 
+// ══════════════════════════════════════════════════════════
+//  EQUIPMENT CONDITION LOG
+// ══════════════════════════════════════════════════════════
+let selectedCondition='';
+
+function selectCondition(val){
+  selectedCondition=val;
+  document.querySelectorAll('.condition-opt').forEach(btn=>{
+    btn.classList.toggle('selected', btn.dataset.val===val);
+  });
+}
+
+function openConditionModal(bookingId){
+  const b=DB.bookings.find(x=>x.id===bookingId);
+  if(!b){ toast('Booking not found.','error'); return; }
+  const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
+  document.getElementById('condition-booking-id').value=bookingId;
+  document.getElementById('condition-equip-info').innerHTML=`
+    <strong>${esc(eq.name||'Unknown')}</strong><br/>
+    <span style="font-size:12px;color:var(--text-muted)">Borrowed by ${esc(b.userName)} · ${b.dateFrom} to ${b.dateTo}</span>
+    ${eq.serial?`<br/><span style="font-size:11px;color:var(--text-muted);font-family:monospace">S/N: ${esc(eq.serial)}</span>`:''}`;
+  document.getElementById('condition-notes').value='';
+  selectedCondition='';
+  document.querySelectorAll('.condition-opt').forEach(btn=>btn.classList.remove('selected'));
+  openModal('modal-condition');
+}
+
+function submitConditionAndReturn(){
+  if(!selectedCondition){ toast('Please select a condition rating.','error'); return; }
+  const bookingId=document.getElementById('condition-booking-id').value;
+  const notes=document.getElementById('condition-notes').value.trim();
+  const b=DB.bookings.find(x=>x.id===bookingId);
+  if(!b){ toast('Booking not found.','error'); return; }
+  const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
+
+  // Update booking with condition info
+  b.conditionOnReturn=selectedCondition;
+  b.conditionNotes=notes;
+  b.status='returned';
+  b.returnedAt=new Date().toISOString();
+  b.returnedBy=currentUser.name;
+
+  // If damaged or poor, set equipment to maintenance
+  if(selectedCondition==='damaged'||selectedCondition==='poor'){
+    eq.status='maintenance';
+    eq.maintenanceNote='Returned in '+selectedCondition+' condition'+(notes?' — '+notes:'');
+    eq.maintenanceReturnDate='';
+    _syncEquip(eq.id);
+  } else {
+    eq.status='available';
+    _syncEquip(eq.id);
+  }
+
+  saveDB();
+  // Sync the specific booking to Supabase
+  (async()=>{
+    try{ await sb.from('bookings').upsert([bookingToSb(b)],{onConflict:'id'}); }catch(e){console.warn(e);}
+  })();
+
+  createNotification(b.userId, `📦 ${eq.name} has been returned (condition: ${selectedCondition}).`, 'returned', bookingId);
+  addAuditLog('return','booking',bookingId,eq.name||'?',`Returned by ${b.userName} — condition: ${selectedCondition}${notes?' — '+notes:''}`);
+
+  closeModal('modal-condition');
+  toast(`${eq.name} returned — condition: ${selectedCondition}.`, selectedCondition==='damaged'?'error':'success');
+
+  // Re-render relevant views
+  if(typeof renderStaffApprovals==='function') renderStaffApprovals();
+  if(typeof renderAdminBookings==='function') renderAdminBookings();
+  if(typeof renderStaffHome==='function') renderStaffHome();
+  if(typeof renderAdminEquip==='function') renderAdminEquip();
+}
 
 // ══════════════════════════════════════════════════════════
 //  BOOT
