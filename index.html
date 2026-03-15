@@ -1037,6 +1037,36 @@
   </div>
 </div>
 
+<!-- Quick Check Out Modal -->
+<div class="modal-overlay" id="modal-checkout">
+  <div class="modal">
+    <h2>📤 Check Out Equipment</h2>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Select an approved booking to mark as checked out.</p>
+    <div class="filter-bar" style="margin-bottom:12px;">
+      <input type="text" id="checkout-search" placeholder="Search by student name or equipment…" oninput="renderCheckoutList()" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;outline:none;"/>
+    </div>
+    <div id="checkout-list" style="max-height:320px;overflow-y:auto;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-checkout')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Check In Modal -->
+<div class="modal-overlay" id="modal-checkin">
+  <div class="modal">
+    <h2>📥 Check In Equipment</h2>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Select an active booking to check equipment back in.</p>
+    <div class="filter-bar" style="margin-bottom:12px;">
+      <input type="text" id="checkin-search" placeholder="Search by student name or equipment…" oninput="renderCheckinList()" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;outline:none;"/>
+    </div>
+    <div id="checkin-list" style="max-height:320px;overflow-y:auto;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-checkin')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -1499,7 +1529,21 @@ function renderStaffHome(){
   const today=new Date().toISOString().slice(0,10);
   const overdue=DB.bookings.filter(b=>(b.status==='approved'||b.status==='active')&&b.dateTo<today).length;
   const isAdmin=currentUser.role==='admin';
-  document.getElementById('staff-stats').innerHTML=`
+  const canAction=currentUser.role==='staff'||currentUser.role==='admin'||currentUser.role==='student_leader';
+
+  // ── Quick Actions Card (if staff/admin/student_leader) ──
+  let quickActionsHtml='';
+  if(canAction){
+    quickActionsHtml=`<div class="card" style="margin-bottom:20px;">
+      <div class="card-header"><h3>⚡ Quick Actions</h3></div>
+      <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;padding:16px;">
+        <button class="btn btn-primary" style="flex:1;min-width:160px;padding:14px;font-size:15px;" onclick="openCheckOutModal()">📤 Check Out Equipment</button>
+        <button class="btn btn-gold" style="flex:1;min-width:160px;padding:14px;font-size:15px;" onclick="openCheckInModal()">📥 Check In Equipment</button>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('staff-stats').innerHTML=quickActionsHtml+`
     <div class="stat-card red clickable" onclick="showView('view-staff-approvals');setApprovalFilter('pending')">
       <div class="stat-val">${pending}</div><div class="stat-label">Pending Approval</div>
       <span class="stat-arrow">View pending →</span></div>
@@ -2646,6 +2690,92 @@ function submitConditionAndReturn(){
   if(typeof renderAdminBookings==='function') renderAdminBookings();
   if(typeof renderStaffHome==='function') renderStaffHome();
   if(typeof renderAdminEquip==='function') renderAdminEquip();
+}
+
+// ══════════════════════════════════════════════════════════
+//  QUICK CHECK OUT / CHECK IN
+// ══════════════════════════════════════════════════════════
+function openCheckOutModal(){
+  renderCheckoutList();
+  openModal('modal-checkout');
+}
+
+function openCheckInModal(){
+  renderCheckinList();
+  openModal('modal-checkin');
+}
+
+function renderCheckoutList(){
+  const q=(document.getElementById('checkout-search').value||'').toLowerCase();
+  // Approved bookings that haven't been checked out yet
+  const bookings=DB.bookings.filter(b=>b.status==='approved').filter(b=>{
+    if(!q) return true;
+    const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
+    return (b.userName||'').toLowerCase().includes(q)||(eq.name||'').toLowerCase().includes(q);
+  });
+  const el=document.getElementById('checkout-list');
+  if(!bookings.length){
+    el.innerHTML=`<div class="empty" style="padding:24px;text-align:center;"><div class="empty-icon">📭</div><p>${q?'No matching bookings':'No approved bookings ready for check out'}</p></div>`;
+    return;
+  }
+  el.innerHTML=bookings.map(b=>{
+    const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:var(--radius-sm);background:var(--bg);margin-bottom:6px;gap:12px;">
+      <div>
+        <strong style="font-size:13px">${esc(eq.name||'Unknown')}</strong>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:8px">${esc(b.userName)}</span>
+        <br/><span style="font-size:11px;color:var(--text-muted)">${fmtDate(b.dateFrom)} → ${fmtDate(b.dateTo)}</span>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="doCheckOut('${b.id}')">Check Out</button>
+    </div>`;
+  }).join('');
+}
+
+function renderCheckinList(){
+  const q=(document.getElementById('checkin-search').value||'').toLowerCase();
+  // Active bookings ready to be returned
+  const bookings=DB.bookings.filter(b=>b.status==='active'||b.status==='approved').filter(b=>{
+    if(!q) return true;
+    const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
+    return (b.userName||'').toLowerCase().includes(q)||(eq.name||'').toLowerCase().includes(q);
+  });
+  const el=document.getElementById('checkin-list');
+  if(!bookings.length){
+    el.innerHTML=`<div class="empty" style="padding:24px;text-align:center;"><div class="empty-icon">📭</div><p>${q?'No matching bookings':'No active bookings to check in'}</p></div>`;
+    return;
+  }
+  el.innerHTML=bookings.map(b=>{
+    const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
+    const statusBadge=b.status==='active'?'<span class="badge badge-active">Out</span>':'<span class="badge badge-approved">Approved</span>';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:var(--radius-sm);background:var(--bg);margin-bottom:6px;gap:12px;">
+      <div>
+        <strong style="font-size:13px">${esc(eq.name||'Unknown')}</strong>
+        ${statusBadge}
+        <span style="font-size:12px;color:var(--text-muted);margin-left:4px">${esc(b.userName)}</span>
+        <br/><span style="font-size:11px;color:var(--text-muted)">${fmtDate(b.dateFrom)} → ${fmtDate(b.dateTo)}</span>
+      </div>
+      <button class="btn btn-sm btn-gold" onclick="doCheckIn('${b.id}')">Check In</button>
+    </div>`;
+  }).join('');
+}
+
+function doCheckOut(bookingId){
+  const b=DB.bookings.find(x=>x.id===bookingId);
+  if(!b){ toast('Booking not found.','error'); return; }
+  const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
+  b.status='active';
+  saveDB();
+  (async()=>{ try{ await sb.from('bookings').upsert([bookingToSb(b)],{onConflict:'id'}); }catch(e){console.warn(e);} })();
+  createNotification(b.userId,`📤 ${eq.name} has been checked out to you. Please return it by ${fmtDate(b.dateTo)}.`,'approved',bookingId);
+  addAuditLog('edit','booking',bookingId,eq.name||'?',`Checked out to ${b.userName}`);
+  toast(`${eq.name} checked out to ${b.userName}.`,'success');
+  closeModal('modal-checkout');
+  renderStaffHome();
+}
+
+function doCheckIn(bookingId){
+  closeModal('modal-checkin');
+  openConditionModal(bookingId);
 }
 
 // ══════════════════════════════════════════════════════════
