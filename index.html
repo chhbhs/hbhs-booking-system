@@ -281,6 +281,34 @@
     .booking-detail-row span:last-child{font-weight:600;}
     .section-title{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--text-muted);margin-bottom:14px;}
     code{background:var(--bg);padding:2px 7px;border-radius:5px;font-size:12px;font-family:'SF Mono','Menlo',monospace;color:var(--text);}
+    /* ── CALENDAR ── */
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+    .cal-day-name{text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);padding:6px 0;text-transform:uppercase;letter-spacing:.5px;}
+    .cal-cell{min-height:80px;background:var(--bg);border-radius:var(--radius-sm);padding:6px;cursor:pointer;transition:background .15s;border:1.5px solid transparent;position:relative;}
+    .cal-cell:hover{background:#e8e9ec;border-color:var(--border-strong);}
+    .cal-cell.today{background:#fff3cd;border-color:var(--gold);}
+    .cal-cell.other-month{opacity:.35;}
+    .cal-cell.selected{border-color:var(--navy);background:#f7eaed;}
+    .cal-date{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:4px;}
+    .cal-cell.today .cal-date{color:var(--navy);font-weight:800;}
+    .cal-event{font-size:10px;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;}
+    .cal-event.status-approved{background:#d1fae5;color:#065f46;}
+    .cal-event.status-active{background:#dbeafe;color:#1e40af;}
+    .cal-event.status-pending{background:#fef3c7;color:#92400e;}
+    .cal-more{font-size:10px;color:var(--text-muted);font-style:italic;}
+    /* ── EQUIP PHOTO THUMBNAIL ── */
+    .equip-thumb{width:40px;height:40px;object-fit:cover;border-radius:7px;margin-right:8px;vertical-align:middle;border:1px solid var(--border);}
+    .equip-card-photo{width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:10px;}
+    /* ── MAINTENANCE BADGE ── */
+    .badge-maintenance{background:#fff7ed;color:#c2410c;border:1px solid rgba(194,65,12,.2);}
+    /* ── AUDIT LOG ── */
+    .audit-action-create{color:#059669;font-weight:600;}
+    .audit-action-edit{color:#0284c7;font-weight:600;}
+    .audit-action-delete{color:#dc2626;font-weight:600;}
+    .audit-action-approve{color:#059669;font-weight:600;}
+    .audit-action-reject{color:#dc2626;font-weight:600;}
+    .audit-action-return{color:#7c3aed;font-weight:600;}
+    .audit-action-booking{color:#0284c7;font-weight:600;}
     /* ── MOBILE HAMBURGER ── */
     .hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;width:38px;height:38px;background:var(--bg);border:1px solid var(--border-strong);border-radius:var(--radius-sm);cursor:pointer;padding:8px;flex-shrink:0;}
     .hamburger span{display:block;height:2px;background:var(--text);border-radius:2px;transition:all .25s;}
@@ -450,7 +478,7 @@
             </div>
             <div class="card-body" style="padding:0">
               <div class="table-wrap"><table>
-                <thead><tr><th>Equipment</th><th>Category</th><th>Location</th><th>From</th><th>To</th><th>Status</th><th>Teacher Note</th></tr></thead>
+                <thead><tr><th>Equipment</th><th>Category</th><th>Location</th><th>From</th><th>To</th><th>Status</th><th>Teacher Note</th><th></th></tr></thead>
                 <tbody id="my-bookings-table"></tbody>
               </table></div>
             </div>
@@ -595,6 +623,77 @@
           </div>
         </div>
 
+        <!-- CALENDAR VIEW -->
+        <div class="view" id="view-calendar">
+          <div class="flex mb-2" style="align-items:center;gap:12px;flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="calPrevMonth()">← Previous</button>
+            <span id="cal-title" style="font-size:16px;font-weight:700;min-width:160px;text-align:center;"></span>
+            <button class="btn btn-outline btn-sm" onclick="calNextMonth()">Next →</button>
+            <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+              <select id="cal-filter-loc" onchange="renderCalendar()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:white;outline:none;">
+                <option value="">All Locations</option>
+                <option>Music Department</option><option>Film &amp; TV Department</option>
+                <option>Visual Arts Department</option>
+              </select>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body" style="padding:16px;">
+              <div id="cal-grid" class="cal-grid"></div>
+            </div>
+          </div>
+          <div id="cal-day-panel" style="display:none;" class="card mt-2">
+            <div class="card-header">
+              <h3 id="cal-day-title">Bookings</h3>
+              <button class="btn btn-sm btn-outline" onclick="document.getElementById('cal-day-panel').style.display='none'">✕ Close</button>
+            </div>
+            <div class="card-body" style="padding:0">
+              <div class="table-wrap"><table>
+                <thead><tr><th>Equipment</th><th>Student</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+                <tbody id="cal-day-table"></tbody>
+              </table></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AUDIT LOG VIEW -->
+        <div class="view" id="view-audit-log">
+          <div class="filter-bar">
+            <select id="filter-audit-action" onchange="renderAuditLog()">
+              <option value="">All Actions</option>
+              <option value="create">Created</option>
+              <option value="edit">Edited</option>
+              <option value="delete">Deleted</option>
+              <option value="approve">Approved</option>
+              <option value="reject">Rejected</option>
+              <option value="return">Returned</option>
+              <option value="booking">Booking</option>
+            </select>
+            <select id="filter-audit-entity" onchange="renderAuditLog()">
+              <option value="">All Types</option>
+              <option value="equipment">Equipment</option>
+              <option value="user">User</option>
+              <option value="booking">Booking</option>
+            </select>
+            <input type="text" id="filter-audit-search" placeholder="🔍 Search…" oninput="renderAuditLog()"/>
+          </div>
+          <div class="card">
+            <div class="card-body" style="padding:0">
+              <div class="table-wrap"><table>
+                <thead><tr><th style="width:14%">When</th><th style="width:14%">Who</th><th style="width:12%">Action</th><th style="width:12%">Type</th><th style="width:22%">Item</th><th>Details</th></tr></thead>
+                <tbody id="audit-log-table"></tbody>
+              </table></div>
+            </div>
+          </div>
+          <div id="audit-pagination" style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;gap:12px;">
+            <span id="audit-page-info" style="font-size:13px;color:var(--text-muted);"></span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline" id="audit-prev-btn" onclick="changeAuditPage(-1)">← Previous</button>
+              <button class="btn btn-outline" id="audit-next-btn" onclick="changeAuditPage(1)">Next →</button>
+            </div>
+          </div>
+        </div>
+
         <!-- ADMIN: All Bookings -->
         <div class="view" id="view-admin-bookings">
           <div class="filter-bar">
@@ -713,8 +812,18 @@
           <option>Visual Arts Department</option>
         </select></div>
       <div class="field"><label>Status</label>
-        <select id="equip-status"><option value="available">Available</option><option value="unavailable">Unavailable / Maintenance</option></select></div>
+        <select id="equip-status" onchange="toggleMaintenanceFields()">
+          <option value="available">Available</option>
+          <option value="unavailable">Unavailable</option>
+          <option value="maintenance">🔧 Under Maintenance</option>
+        </select></div>
       <div class="field"><label>Serial / Asset Number</label><input type="text" id="equip-serial" placeholder="e.g. HBHS-CAM-001"/></div>
+    </div>
+    <div id="maintenance-fields" style="display:none;margin-top:4px;">
+      <div class="form-grid">
+        <div class="field"><label>Maintenance Note</label><input type="text" id="equip-maintenance-note" placeholder="e.g. Lens cracked, sent for repair"/></div>
+        <div class="field"><label>Expected Return Date</label><input type="date" id="equip-maintenance-return"/></div>
+      </div>
     </div>
     <div class="divider"></div>
     <div class="section-title">Technical Details</div>
@@ -723,6 +832,7 @@
       <div class="field"><label>Item Type</label><input type="text" id="equip-item-type" placeholder="e.g. Video Cameras"/></div>
       <div class="field"><label>Manufacturer</label><input type="text" id="equip-manufacturer" placeholder="e.g. Sony"/></div>
       <div class="field"><label>Model</label><input type="text" id="equip-model" placeholder="e.g. HDR-CX405"/></div>
+      <div class="field" style="grid-column:1/-1"><label>Photo URL <span style="font-weight:400;color:var(--text-muted)">(optional — paste an image link)</span></label><input type="url" id="equip-photo-url" placeholder="https://…"/></div>
       <div class="field" style="grid-column:1/-1"><label>Description</label><textarea id="equip-description" placeholder="Optional description…" style="min-height:55px"></textarea></div>
     </div>
     <div class="modal-footer">
@@ -883,7 +993,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 //  DATABASE
 // ══════════════════════════════════════════════════════════
 const STORE = 'hbhs_booking_v3';
-let DB = { users:[], equipment:[], bookings:[], notifications:[] };
+let DB = { users:[], equipment:[], bookings:[], notifications:[], auditLog:[] };
 let currentUser = null;
 let selectedEquipId = null;
 let actionBookingId = null;
@@ -893,8 +1003,10 @@ let importRows = [];
 // ── Field mappers: Supabase (snake_case) ↔ JS (camelCase) ──
 function sbToUser(r)    { return { id:r.id, username:r.username, password:r.password, name:r.name, role:r.role, email:r.email||'', studentId:r.student_id||'', prefix:r.prefix||'', memberSince:r.member_since||'' }; }
 function userToSb(u)    { return { id:u.id, username:u.username, password:u.password, name:u.name, role:u.role, email:u.email||null, student_id:u.studentId||null, prefix:u.prefix||null, member_since:u.memberSince||null }; }
-function sbToEquip(r)   { return { id:r.id, name:r.name, category:r.category, itemType:r.item_type||'', location:r.location, status:r.status, serial:r.serial||'', assetId:r.asset_id||'', manufacturer:r.manufacturer||'', model:r.model||'', description:r.description||'' }; }
-function equipToSb(e)   { return { id:e.id, name:e.name, category:e.category, item_type:e.itemType||null, location:e.location, status:e.status, serial:e.serial||null, asset_id:e.assetId||null, manufacturer:e.manufacturer||null, model:e.model||null, description:e.description||null }; }
+function sbToEquip(r)   { return { id:r.id, name:r.name, category:r.category, itemType:r.item_type||'', location:r.location, status:r.status, serial:r.serial||'', assetId:r.asset_id||'', manufacturer:r.manufacturer||'', model:r.model||'', description:r.description||'', maintenanceNote:r.maintenance_note||'', maintenanceReturnDate:r.maintenance_return_date||'', photoUrl:r.photo_url||'' }; }
+function equipToSb(e)   { return { id:e.id, name:e.name, category:e.category, item_type:e.itemType||null, location:e.location, status:e.status, serial:e.serial||null, asset_id:e.assetId||null, manufacturer:e.manufacturer||null, model:e.model||null, description:e.description||null, maintenance_note:e.maintenanceNote||null, maintenance_return_date:e.maintenanceReturnDate||null, photo_url:e.photoUrl||null }; }
+function sbToAudit(r)   { return { id:r.id, userId:r.user_id, userName:r.user_name||'', action:r.action, entityType:r.entity_type, entityId:r.entity_id||'', entityName:r.entity_name||'', details:r.details||'', createdAt:r.created_at }; }
+function auditToSb(a)   { return { id:a.id, user_id:a.userId, user_name:a.userName||null, action:a.action, entity_type:a.entityType, entity_id:a.entityId||null, entity_name:a.entityName||null, details:a.details||null }; }
 function sbToBooking(r) { return { id:r.id, userId:r.user_id, userName:r.user_name||'', studentId:r.student_id||'', prefix:r.prefix||'', equipmentId:r.equipment_id, dateFrom:r.date_from, dateTo:r.date_to, notes:r.notes||'', status:r.status, teacherNote:r.teacher_note||'', resolvedBy:r.resolved_by||null, resolvedAt:r.resolved_at||null, returnedAt:r.returned_at||null, returnedBy:r.returned_by||null, createdAt:r.created_at }; }
 function bookingToSb(b) { return { id:b.id, user_id:b.userId, user_name:b.userName||null, student_id:b.studentId||null, prefix:b.prefix||null, equipment_id:b.equipmentId, date_from:b.dateFrom, date_to:b.dateTo, notes:b.notes||null, status:b.status, teacher_note:b.teacherNote||null, resolved_by:b.resolvedBy||null, resolved_at:b.resolvedAt||null, returned_at:b.returnedAt||null, returned_by:b.returnedBy||null, created_at:b.createdAt }; }
 function sbToNotif(r)   { return { id:r.id, userId:r.user_id, message:r.message, type:r.type||'info', bookingId:r.booking_id||null, read:r.read||false, createdAt:r.created_at }; }
@@ -903,17 +1015,19 @@ function notifToSb(n)   { return { id:n.id, user_id:n.userId, message:n.message,
 // ── Load all data from Supabase (localStorage fallback) ──
 async function loadDB() {
   try {
-    const [ur,er,br,nr] = await Promise.all([
+    const [ur,er,br,nr,ar] = await Promise.all([
       sb.from('users').select('*'),
       sb.from('equipment').select('*'),
       sb.from('bookings').select('*'),
-      sb.from('notifications').select('*')
+      sb.from('notifications').select('*'),
+      sb.from('audit_log').select('*').order('created_at',{ascending:false}).limit(500)
     ]);
     if (ur.error || er.error) throw (ur.error || er.error);
     DB.users         = (ur.data||[]).map(sbToUser);
     DB.equipment     = (er.data||[]).map(sbToEquip);
     DB.bookings      = (br.data||[]).map(sbToBooking);
     DB.notifications = (nr.data||[]).map(sbToNotif);
+    DB.auditLog      = (ar.data||[]).map(sbToAudit);
     localStorage.setItem(STORE, JSON.stringify(DB));
   } catch(e) {
     console.warn('Supabase load failed, using localStorage cache:', e);
@@ -963,6 +1077,7 @@ async function initDB(){
 }
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).substr(2,5); }
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // ══════════════════════════════════════════════════════════
 //  AUTH
@@ -1029,11 +1144,12 @@ function renderSidebar(){
   if(r==='student'){
     h+=ns('Student')+ni('🏠','Dashboard','view-student-home')+ni('📦','Browse & Book','view-student-browse')+ni('📋','My Bookings','view-student-bookings');
   } else if(r==='staff'){
-    h+=ns('Staff')+ni('🏠','Dashboard','view-staff-home')+ni('⏳','Approve Bookings','view-staff-approvals')+ni('📋','All Bookings','view-admin-bookings');
+    h+=ns('Staff')+ni('🏠','Dashboard','view-staff-home')+ni('⏳','Approve Bookings','view-staff-approvals')+ni('📋','All Bookings','view-admin-bookings')+ni('📅','Calendar','view-calendar');
     h+=ns('Management')+ni('🎒','Equipment','view-admin-equipment')+ni('👤','Users','view-admin-users');
   } else {
-    h+=ns('Admin')+ni('🏠','Dashboard','view-staff-home')+ni('⏳','Approve Bookings','view-staff-approvals')+ni('📋','All Bookings','view-admin-bookings');
+    h+=ns('Admin')+ni('🏠','Dashboard','view-staff-home')+ni('⏳','Approve Bookings','view-staff-approvals')+ni('📋','All Bookings','view-admin-bookings')+ni('📅','Calendar','view-calendar');
     h+=ns('Management')+ni('🎒','Equipment','view-admin-equipment')+ni('👤','Users','view-admin-users');
+    h+=ns('System')+ni('📝','Audit Log','view-audit-log');
   }
   document.getElementById('sidebar-nav').innerHTML=h;
 }
@@ -1046,7 +1162,7 @@ function showView(id){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const v=document.getElementById(id); if(v) v.classList.add('active');
   const n=document.getElementById('nav-'+id); if(n) n.classList.add('active');
-  const titles={'view-student-home':'Dashboard','view-student-browse':'Browse Equipment','view-student-bookings':'My Bookings','view-staff-home':'Dashboard','view-staff-approvals':'Booking Approvals','view-admin-equipment':'Equipment Management','view-admin-users':'User Management','view-admin-bookings':'All Bookings'};
+  const titles={'view-student-home':'Dashboard','view-student-browse':'Browse Equipment','view-student-bookings':'My Bookings','view-staff-home':'Dashboard','view-staff-approvals':'Booking Approvals','view-admin-equipment':'Equipment Management','view-admin-users':'User Management','view-admin-bookings':'All Bookings','view-calendar':'Booking Calendar','view-audit-log':'Audit Log'};
   document.getElementById('page-title').textContent=titles[id]||'Dashboard';
   if(id==='view-student-home') renderStudentHome();
   if(id==='view-student-browse') renderEquipmentGrid();
@@ -1056,6 +1172,8 @@ function showView(id){
   if(id==='view-admin-equipment') renderAdminEquip();
   if(id==='view-admin-users') renderAdminUsers();
   if(id==='view-admin-bookings') renderAdminBookings();
+  if(id==='view-calendar') renderCalendar();
+  if(id==='view-audit-log') renderAuditLog();
   updatePendingBadge();
 }
 
@@ -1208,17 +1326,22 @@ function renderEquipmentGrid(){
   grid.innerHTML=items.map(e=>{
     const avail=isEquipAvailableNow(e.id);
     const icon=catIcon(e.category);
-    const unavail=(!avail||e.status==='unavailable');
-    const label=e.status==='unavailable'?'Maintenance':(avail?'Available':'On Loan');
-    return `<div class="equip-card ${unavail?'unavailable':''}" onclick="selectEquip('${e.id}')">
-      <div class="equip-icon">${icon}</div>
-      <h4>${e.name}</h4>
-      <div class="equip-meta">${[e.manufacturer,e.model].filter(Boolean).join(' · ')||''}</div>
-      ${e.serial?`<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-family:'SF Mono',Menlo,monospace;">S/N: ${e.serial}</div>`:''}
-      ${e.assetId?`<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-family:'SF Mono',Menlo,monospace;">Asset: ${e.assetId}</div>`:''}
-      <span class="badge badge-${catBadge(e.category)}">${e.category}</span>
-      &nbsp;<span class="badge badge-${avail&&e.status==='available'?'available':'unavailable'}">${label}</span>
-      <div class="equip-location">📍 ${e.location}</div>
+    const isMaint=e.status==='maintenance';
+    const isUnavail=e.status==='unavailable';
+    const blocked=(!avail||isMaint||isUnavail);
+    const label=isMaint?'🔧 Maintenance':isUnavail?'Unavailable':(avail?'Available':'On Loan');
+    const statusBadge=isMaint?'maintenance':(!avail||isUnavail)?'unavailable':'available';
+    const maintInfo=isMaint&&e.maintenanceNote?`<div style="font-size:11px;color:#c2410c;margin-bottom:6px;padding:4px 8px;background:#fff7ed;border-radius:5px;">🔧 ${esc(e.maintenanceNote)}${e.maintenanceReturnDate?` · Est. return: ${e.maintenanceReturnDate}`:''}</div>`:'';
+    return `<div class="equip-card ${blocked?'unavailable':''}" onclick="selectEquip('${e.id}')">
+      ${e.photoUrl?`<img class="equip-card-photo" src="${esc(e.photoUrl)}" alt="${esc(e.name)}" onerror="this.style.display='none'"/>`:`<div class="equip-icon">${icon}</div>`}
+      <h4>${esc(e.name)}</h4>
+      <div class="equip-meta">${esc([e.manufacturer,e.model].filter(Boolean).join(' · '))||''}</div>
+      ${e.serial?`<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-family:'SF Mono',Menlo,monospace;">S/N: ${esc(e.serial)}</div>`:''}
+      ${e.assetId?`<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-family:'SF Mono',Menlo,monospace;">Asset: ${esc(e.assetId)}</div>`:''}
+      ${maintInfo}
+      <span class="badge badge-${catBadge(e.category)}">${esc(e.category)}</span>
+      &nbsp;<span class="badge badge-${statusBadge}">${label}</span>
+      <div class="equip-location">📍 ${esc(e.location)}</div>
     </div>`;
   }).join('');
 }
@@ -1247,16 +1370,21 @@ function submitBooking(){
   const to=document.getElementById('book-to').value;
   const notes=document.getElementById('book-notes').value;
   if(!from||!to){ toast('Please select booking dates.','error'); return; }
+  const today=new Date().toISOString().split('T')[0];
+  if(from<today){ toast('Booking start date cannot be in the past.','error'); return; }
   if(from>to){ toast('End date must be after start date.','error'); return; }
+  const eq=DB.equipment.find(e=>e.id===selectedEquipId)||{};
+  if(eq.status==='maintenance'){ toast('This equipment is currently under maintenance and cannot be booked.','error'); return; }
+  if(eq.status==='unavailable'){ toast('This equipment is currently unavailable.','error'); return; }
   const conflict=DB.bookings.some(b=>b.equipmentId===selectedEquipId&&(b.status==='approved'||b.status==='active'||b.status==='pending')&&!(to<b.dateFrom||from>b.dateTo));
   if(conflict){ toast('This equipment already has a booking for those dates.','error'); return; }
-  const eq=DB.equipment.find(e=>e.id===selectedEquipId)||{};
   const booking={id:uid(),userId:currentUser.id,userName:currentUser.name,studentId:currentUser.studentId||'',prefix:currentUser.prefix||'',equipmentId:selectedEquipId,dateFrom:from,dateTo:to,notes,status:'pending',teacherNote:'',createdAt:Date.now()};
   DB.bookings.push(booking);
   // Notify all staff/admin
   DB.users.filter(u=>u.role==='staff'||u.role==='admin').forEach(u=>{
     createNotification(u.id,`📋 New booking request from ${currentUser.name} for ${eq.name} (${fmtDate(from)} – ${fmtDate(to)})`, 'pending', booking.id);
   });
+  addAuditLog('booking','booking',booking.id,eq.name||'?',`${currentUser.name} requested ${fmtDate(from)}–${fmtDate(to)}`);
   saveDB();
   closeModal('modal-booking');
   renderEquipmentGrid();
@@ -1270,7 +1398,8 @@ function renderMyBookings(){
   if(!mine.length){ tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">📋</div><p>No bookings yet</p></div></td></tr>`; return; }
   tbody.innerHTML=mine.map(b=>{
     const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
-    return `<tr><td><strong>${eq.name||'Unknown'}</strong><br/><span class="text-muted">${eq.serial||''}</span></td><td><span class="badge badge-${catBadge(eq.category)}">${eq.category||'-'}</span></td><td>${eq.location||'-'}</td><td>${fmtDate(b.dateFrom)}</td><td>${fmtDate(b.dateTo)}</td><td><span class="badge badge-${b.status}">${b.status}</span></td><td>${b.teacherNote?`<span style="font-size:12px;color:var(--text-muted)">"${b.teacherNote}"</span>`:'-'}</td></tr>`;
+    const cancelBtn=b.status==='pending'?`<button class="btn btn-xs btn-danger" onclick="cancelStudentBooking('${b.id}')">Cancel</button>`:'';
+    return `<tr><td><strong>${esc(eq.name)||'Unknown'}</strong><br/><span class="text-muted">${esc(eq.serial)||''}</span></td><td><span class="badge badge-${catBadge(eq.category)}">${esc(eq.category)||'-'}</span></td><td>${esc(eq.location)||'-'}</td><td>${fmtDate(b.dateFrom)}</td><td>${fmtDate(b.dateTo)}</td><td><span class="badge badge-${esc(b.status)}">${esc(b.status)}</span></td><td>${b.teacherNote?`<span style="font-size:12px;color:var(--text-muted)">"${esc(b.teacherNote)}"</span>`:'-'}</td><td>${cancelBtn}</td></tr>`;
   }).join('');
 }
 
@@ -1386,7 +1515,7 @@ function renderStaffApprovals(){
     if(b.status==='pending') actions=`<button class="btn btn-xs btn-success" onclick="openApproveModal('${b.id}')">Review</button>`;
     else if(b.status==='approved') actions=`<button class="btn btn-xs btn-outline" onclick="openReturnModal('${b.id}')">Mark Returned</button>`;
     else actions='—';
-    return `<tr><td><strong>${b.userName}</strong></td><td>${b.studentId||'-'}</td><td><strong>${eq.name||'Unknown'}</strong><br/><span class="text-muted">${eq.serial||''}</span></td><td>${eq.location||'-'}</td><td>${fmtDate(b.dateFrom)}</td><td>${fmtDate(b.dateTo)}</td><td><span class="badge badge-${b.status}">${b.status}</span></td><td>${actions}</td></tr>`;
+    return `<tr><td><strong>${esc(b.userName)}</strong></td><td>${esc(b.studentId)||'-'}</td><td><strong>${esc(eq.name)||'Unknown'}</strong><br/><span class="text-muted">${esc(eq.serial)||''}</span></td><td>${esc(eq.location)||'-'}</td><td>${fmtDate(b.dateFrom)}</td><td>${fmtDate(b.dateTo)}</td><td><span class="badge badge-${esc(b.status)}">${esc(b.status)}</span></td><td>${actions}</td></tr>`;
   }).join('');
 }
 
@@ -1426,6 +1555,7 @@ function resolveBooking(decision){
   // Offer email modal if student has email
   const student=DB.users.find(u=>u.id===b.userId)||{};
   if(student.email) openEmailModal(b, decision);
+  addAuditLog(decision==='approved'?'approve':'reject','booking',b.id,eq.name||'?',`${decision} for ${b.userName||'?'} (${fmtDate(b.dateFrom)}–${fmtDate(b.dateTo)})`);
   renderStaffApprovals();
   renderStaffHome();
   updatePendingBadge();
@@ -1447,6 +1577,7 @@ function confirmReturn(){
   b.status='returned'; b.returnedAt=Date.now(); b.returnedBy=currentUser.name;
   const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
   createNotification(b.userId, `📦 ${eq.name} has been marked as returned. Thanks!`, 'returned', b.id);
+  addAuditLog('return','booking',b.id,eq.name||'?',`Returned by ${b.userName||'?'}`);
   saveDB();
   closeModal('modal-return');
   toast('Equipment marked as returned.','success');
@@ -1501,13 +1632,13 @@ function renderAdminEquip(resetPage){
   const start=equipPage*EQUIP_PER_PAGE;
   const page=items.slice(start,start+EQUIP_PER_PAGE);
   tbody.innerHTML=page.map(e=>`<tr>
-    <td><code>${e.assetId||'—'}</code></td>
-    <td><strong>${catIcon(e.category)} ${e.name}</strong>${e.manufacturer||e.model?`<br/><span class="text-muted" style="font-size:11px">${[e.manufacturer,e.model].filter(Boolean).join(' · ')}</span>`:''}</td>
-    <td><code style="font-size:12px">${e.serial||'—'}</code></td>
-    <td><span style="font-size:12px;color:var(--text-muted)">${e.itemType||'-'}</span></td>
-    <td><span class="badge badge-${catBadge(e.category)}">${e.category}</span></td>
-    <td>${e.location}</td>
-    <td><span class="badge badge-${e.status==='available'?'available':'unavailable'}">${e.status}</span></td>
+    <td><code>${esc(e.assetId)||'—'}</code></td>
+    <td>${e.photoUrl?`<img class="equip-thumb" src="${esc(e.photoUrl)}" alt="" onerror="this.style.display='none'"/>`:''}${catIcon(e.category)} <strong>${esc(e.name)}</strong>${e.manufacturer||e.model?`<br/><span class="text-muted" style="font-size:11px">${[e.manufacturer,e.model].filter(Boolean).map(esc).join(' · ')}</span>`:''}${e.status==='maintenance'&&e.maintenanceNote?`<br/><span style="font-size:11px;color:#c2410c">🔧 ${esc(e.maintenanceNote)}</span>`:''}</td>
+    <td><code style="font-size:12px">${esc(e.serial)||'—'}</code></td>
+    <td><span style="font-size:12px;color:var(--text-muted)">${esc(e.itemType)||'-'}</span></td>
+    <td><span class="badge badge-${catBadge(e.category)}">${esc(e.category)}</span></td>
+    <td>${esc(e.location)}</td>
+    <td><span class="badge badge-${e.status==='available'?'available':e.status==='maintenance'?'maintenance':'unavailable'}">${esc(e.status)}</span>${e.status==='maintenance'&&e.maintenanceReturnDate?`<br/><span style="font-size:10px;color:var(--text-muted)">Est. ${e.maintenanceReturnDate}</span>`:''}</td>
     <td style="white-space:nowrap">
       <button class="btn btn-xs btn-outline" onclick="openEditEquip('${e.id}')">Edit</button>
       &nbsp;<button class="btn btn-xs btn-primary" onclick="openEquipBookModal('${e.id}')" title="Book this item for a student">📅 Book</button>
@@ -1526,11 +1657,17 @@ function changeEquipPage(dir){
   renderAdminEquip();
 }
 
+function toggleMaintenanceFields(){
+  const s=document.getElementById('equip-status').value;
+  document.getElementById('maintenance-fields').style.display=s==='maintenance'?'block':'none';
+}
+
 function openAddEquipModal(){
   document.getElementById('equip-modal-title').textContent='Add Equipment';
-  ['equip-edit-id','equip-name','equip-serial','equip-asset-id','equip-item-type','equip-manufacturer','equip-model','equip-description'].forEach(i=>document.getElementById(i).value='');
+  ['equip-edit-id','equip-name','equip-serial','equip-asset-id','equip-item-type','equip-manufacturer','equip-model','equip-description','equip-photo-url','equip-maintenance-note','equip-maintenance-return'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('equip-cat').value=''; document.getElementById('equip-loc').value=''; document.getElementById('equip-status').value='available';
   document.getElementById('equip-delete-btn').style.display='none';
+  toggleMaintenanceFields();
   openModal('modal-equip');
 }
 
@@ -1548,7 +1685,11 @@ function openEditEquip(id){
   document.getElementById('equip-manufacturer').value=e.manufacturer||'';
   document.getElementById('equip-model').value=e.model||'';
   document.getElementById('equip-description').value=e.description||'';
+  document.getElementById('equip-photo-url').value=e.photoUrl||'';
+  document.getElementById('equip-maintenance-note').value=e.maintenanceNote||'';
+  document.getElementById('equip-maintenance-return').value=e.maintenanceReturnDate||'';
   document.getElementById('equip-delete-btn').style.display=currentUser.role==='admin'?'inline-flex':'none';
+  toggleMaintenanceFields();
   openModal('modal-equip');
 }
 
@@ -1570,10 +1711,18 @@ function saveEquipment(){
   const manufacturer=document.getElementById('equip-manufacturer').value.trim();
   const model=document.getElementById('equip-model').value.trim();
   const description=document.getElementById('equip-description').value.trim();
+  const photoUrl=document.getElementById('equip-photo-url').value.trim();
+  const maintenanceNote=status==='maintenance'?document.getElementById('equip-maintenance-note').value.trim():'';
+  const maintenanceReturnDate=status==='maintenance'?document.getElementById('equip-maintenance-return').value:'';
   if(!name||!cat||!loc){ toast('Please fill in all required fields.','error'); return; }
+  // Validate serial uniqueness
+  if(serial&&DB.equipment.some(e=>e.serial===serial&&e.id!==id)){toast('A piece of equipment with that serial number already exists.','error');return;}
+  if(assetId&&DB.equipment.some(e=>e.assetId===assetId&&e.id!==id)){toast('A piece of equipment with that Asset ID already exists.','error');return;}
+  // Validate photo URL length
+  if(name.length>200){toast('Equipment name is too long (max 200 characters).','error');return;}
   let _eid = id;
-  if(id){ const eq=DB.equipment.find(e=>e.id===id); Object.assign(eq,{name,category:cat,itemType,location:loc,status,serial,assetId,manufacturer,model,description}); }
-  else { const eq={id:uid(),name,category:cat,itemType,location:loc,status,serial,assetId,manufacturer,model,description}; DB.equipment.push(eq); _eid=eq.id; }
+  if(id){ const eq=DB.equipment.find(e=>e.id===id); Object.assign(eq,{name,category:cat,itemType,location:loc,status,serial,assetId,manufacturer,model,description,photoUrl,maintenanceNote,maintenanceReturnDate}); addAuditLog('edit','equipment',id,name,'Status: '+status); }
+  else { const eq={id:uid(),name,category:cat,itemType,location:loc,status,serial,assetId,manufacturer,model,description,photoUrl,maintenanceNote,maintenanceReturnDate}; DB.equipment.push(eq); _eid=eq.id; addAuditLog('create','equipment',_eid,name,'Added to '+loc); }
   saveDB(); _syncEquip(_eid); closeModal('modal-equip'); renderAdminEquip();
   toast(id?'Equipment updated.':'Equipment added.','success');
 }
@@ -1581,6 +1730,8 @@ function saveEquipment(){
 function deleteEquip(id){
   if(currentUser.role!=='admin'){ toast('Only admins can delete equipment.','error'); return; }
   if(!confirm('Delete this equipment item? This cannot be undone.')) return;
+  const eq=DB.equipment.find(e=>e.id===id)||{};
+  addAuditLog('delete','equipment',id,eq.name||id,'Permanently deleted');
   DB.equipment=DB.equipment.filter(e=>e.id!==id);
   saveDB(); _deleteEquip(id); renderAdminEquip(); toast('Equipment deleted.','info');
 }
@@ -1693,10 +1844,14 @@ function processImportData(raw){
   document.getElementById('import-confirm-btn').style.display=ok>0?'inline-flex':'none';
 }
 
-function confirmImport(){
+async function confirmImport(){
   const valid=importRows.filter(r=>r.valid);
-  valid.forEach(r=>{ DB.equipment.push({id:uid(),name:r.name,category:r.category,location:r.location,status:r.status,serial:r.serial}); });
+  const newItems=valid.map(r=>({id:uid(),name:r.name,category:r.category,itemType:'',location:r.location,status:r.status,serial:r.serial||'',assetId:'',manufacturer:'',model:'',description:'',photoUrl:'',maintenanceNote:'',maintenanceReturnDate:''}));
+  newItems.forEach(eq=>DB.equipment.push(eq));
   saveDB();
+  // Batch-sync all imported items to Supabase
+  try { await sb.from('equipment').insert(newItems.map(equipToSb)); } catch(e){ console.warn('Import sync error',e); }
+  addAuditLog('create','equipment','bulk','Multiple items',`Bulk imported ${newItems.length} item${newItems.length!==1?'s':''} via spreadsheet`);
   closeModal('modal-import');
   resetImportModal();
   renderAdminEquip();
@@ -1823,12 +1978,12 @@ function renderAdminUsers(){
     const overdue=overdueMap[u.id]||0;
     const bookingCell=active?`<span class="badge badge-approved" style="margin-right:4px">${active} active</span>${overdue?`<span class="badge badge-rejected">${overdue} overdue</span>`:''}`:'-';
     return `<tr>
-    <td><strong>${u.name}</strong></td>
-    <td><code>${u.username}</code></td>
-    <td>${u.email||'<span class="text-muted">—</span>'}</td>
-    <td><span class="badge badge-${u.role==='admin'?'active':u.role==='staff'?'approved':'pending'}">${u.role}</span></td>
-    <td>${u.studentId||'-'}</td>
-    <td>${u.memberSince||'-'}</td>
+    <td><strong>${esc(u.name)}</strong></td>
+    <td><code>${esc(u.username)}</code></td>
+    <td>${u.email?esc(u.email):'<span class="text-muted">—</span>'}</td>
+    <td><span class="badge badge-${u.role==='admin'?'active':u.role==='staff'?'approved':'pending'}">${esc(u.role)}</span></td>
+    <td>${esc(u.studentId)||'-'}</td>
+    <td>${esc(u.memberSince)||'-'}</td>
     <td>${bookingCell}</td>
     <td>
       <button class="btn btn-xs btn-outline" onclick="openEditUser('${u.id}')">Edit</button>
@@ -1922,11 +2077,14 @@ function submitAdminBooking(){
   const to=document.getElementById('admin-book-to').value;
   const notes=document.getElementById('admin-book-notes').value;
   if(!from||!to){ toast('Please select booking dates.','error'); return; }
+  const today=new Date().toISOString().split('T')[0];
+  if(from<today){ toast('Booking start date cannot be in the past.','error'); return; }
   if(from>to){ toast('End date must be after start date.','error'); return; }
+  const eq=DB.equipment.find(e=>e.id===adminBookEquipId)||{};
+  if(eq.status==='unavailable'||eq.status==='maintenance'){ toast('This equipment is currently '+eq.status+' and cannot be booked.','error'); return; }
   const conflict=DB.bookings.some(b=>b.equipmentId===adminBookEquipId&&(b.status==='approved'||b.status==='active'||b.status==='pending')&&!(to<b.dateFrom||from>b.dateTo));
   if(conflict){ toast('This equipment is already booked for those dates.','error'); return; }
   const u=DB.users.find(x=>x.id===adminBookUserId)||{};
-  const eq=DB.equipment.find(e=>e.id===adminBookEquipId)||{};
   const booking={id:uid(),userId:adminBookUserId,userName:u.name,studentId:u.studentId||'',prefix:u.prefix||'',equipmentId:adminBookEquipId,dateFrom:from,dateTo:to,notes,status:'approved',teacherNote:'Booked by admin',createdAt:Date.now()};
   DB.bookings.push(booking);
   createNotification(adminBookUserId,`✅ ${eq.name} has been booked for you by an admin (${fmtDate(from)} – ${fmtDate(to)}).`,'approved',booking.id);
@@ -2013,11 +2171,14 @@ function submitEquipBooking(){
   const to=document.getElementById('equip-book-to').value;
   const notes=document.getElementById('equip-book-notes').value;
   if(!from||!to){ toast('Please select booking dates.','error'); return; }
+  const today=new Date().toISOString().split('T')[0];
+  if(from<today){ toast('Booking start date cannot be in the past.','error'); return; }
   if(from>to){ toast('End date must be after start date.','error'); return; }
+  const eq=DB.equipment.find(e=>e.id===equipBookEquipId)||{};
+  if(eq.status==='unavailable'||eq.status==='maintenance'){ toast('This equipment is currently '+eq.status+' and cannot be booked.','error'); return; }
   const conflict=DB.bookings.some(b=>b.equipmentId===equipBookEquipId&&(b.status==='approved'||b.status==='active'||b.status==='pending')&&!(to<b.dateFrom||from>b.dateTo));
   if(conflict){ toast('This equipment is already booked for those dates.','error'); return; }
   const u=DB.users.find(x=>x.id===equipBookUserId)||{};
-  const eq=DB.equipment.find(e=>e.id===equipBookEquipId)||{};
   const booking={id:uid(),userId:equipBookUserId,userName:u.name,studentId:u.studentId||'',prefix:u.prefix||'',equipmentId:equipBookEquipId,dateFrom:from,dateTo:to,notes,status:'approved',teacherNote:'Booked by staff',createdAt:Date.now()};
   DB.bookings.push(booking);
   createNotification(equipBookUserId,`✅ ${eq.name} has been booked for you (${fmtDate(from)} – ${fmtDate(to)}).`,'approved',booking.id);
@@ -2071,8 +2232,8 @@ function saveUser(){
   if(role==='student'&&(!studentId||!prefix)){ toast('Student ID and Form Class are required for students.','error'); return; }
   if(DB.users.find(u=>u.username===username&&u.id!==id)){ toast('Username already taken.','error'); return; }
   let _uid2 = id;
-  if(id){ const u=DB.users.find(x=>x.id===id); Object.assign(u,{name,username,email,role,studentId,prefix}); if(password) u.password=password; if(!u.memberSince) u.memberSince=''; }
-  else { const u={id:uid(),name,username,password,email,role,studentId,prefix}; DB.users.push(u); _uid2=u.id; }
+  if(id){ const u=DB.users.find(x=>x.id===id); Object.assign(u,{name,username,email,role,studentId,prefix}); if(password) u.password=password; if(!u.memberSince) u.memberSince=''; addAuditLog('edit','user',id,name,'Role: '+role); }
+  else { const u={id:uid(),name,username,password,email,role,studentId,prefix}; DB.users.push(u); _uid2=u.id; addAuditLog('create','user',_uid2,name,'Added as '+role); }
   saveDB(); _syncUser(_uid2); closeModal('modal-user'); renderAdminUsers();
   toast(id?'User updated.':'User added.','success');
 }
@@ -2080,6 +2241,8 @@ function saveUser(){
 function deleteUser(id){
   if(currentUser.role!=='admin'){ toast('Only admins can delete users.','error'); return; }
   if(!confirm('Delete this user? Their bookings will remain in the system.')) return;
+  const u=DB.users.find(x=>x.id===id)||{};
+  addAuditLog('delete','user',id,u.name||id,'Permanently deleted');
   DB.users=DB.users.filter(u=>u.id!==id);
   saveDB(); _deleteUser(id); renderAdminUsers(); toast('User deleted.','info');
 }
@@ -2130,7 +2293,7 @@ function renderAdminBookings(){
     if(b.status==='pending') actions=`<button class="btn btn-xs btn-success" onclick="openApproveModal('${b.id}')">Review</button>`;
     else if(b.status==='approved') actions=`<button class="btn btn-xs btn-outline" onclick="openReturnModal('${b.id}')">Returned</button>`;
     else actions='—';
-    return `<tr><td><strong>${b.userName}</strong></td><td>${b.studentId||'-'}</td><td><strong>${eq.name||'Unknown'}</strong><br/><span class="text-muted">${eq.serial||''}</span></td><td>${eq.location||'-'}</td><td>${fmtDate(b.dateFrom)}</td><td>${fmtDate(b.dateTo)}</td><td><span class="badge badge-${b.status}">${b.status}</span></td><td>${actions}</td></tr>`;
+    return `<tr><td><strong>${esc(b.userName)}</strong></td><td>${esc(b.studentId)||'-'}</td><td><strong>${esc(eq.name)||'Unknown'}</strong><br/><span class="text-muted">${esc(eq.serial)||''}</span></td><td>${esc(eq.location)||'-'}</td><td>${fmtDate(b.dateFrom)}</td><td>${fmtDate(b.dateTo)}</td><td><span class="badge badge-${esc(b.status)}">${esc(b.status)}</span></td><td>${actions}</td></tr>`;
   }).join('');
 }
 
@@ -2174,6 +2337,140 @@ function catBadge(cat){
     'Storage':'storage','Power Equipment':'powerEquipment','Other':'other'
   }[cat]||'active';
 }
+
+// ══════════════════════════════════════════════════════════
+//  AUDIT LOG
+// ══════════════════════════════════════════════════════════
+let auditPage=0;
+const AUDIT_PER_PAGE=50;
+
+async function addAuditLog(action,entityType,entityId,entityName,details){
+  if(!currentUser) return;
+  const entry={id:uid(),userId:currentUser.id,userName:currentUser.name,action,entityType,entityId:entityId||'',entityName:entityName||'',details:details||'',createdAt:new Date().toISOString()};
+  DB.auditLog.unshift(entry);
+  try { await sb.from('audit_log').insert([auditToSb(entry)]); } catch(e){ console.warn('audit log error',e); }
+}
+
+function renderAuditLog(){
+  const actionF=document.getElementById('filter-audit-action').value;
+  const entityF=document.getElementById('filter-audit-entity').value;
+  const search=(document.getElementById('filter-audit-search').value||'').toLowerCase();
+  let list=(DB.auditLog||[]).filter(a=>{
+    if(actionF&&a.action!==actionF) return false;
+    if(entityF&&a.entityType!==entityF) return false;
+    if(search&&!(a.userName||'').toLowerCase().includes(search)&&!(a.entityName||'').toLowerCase().includes(search)&&!(a.details||'').toLowerCase().includes(search)) return false;
+    return true;
+  });
+  const tbody=document.getElementById('audit-log-table');
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="6"><div class="empty"><div class="empty-icon">📝</div><p>No audit log entries found</p></div></td></tr>`;document.getElementById('audit-pagination').style.display='none';return;}
+  const totalPages=Math.ceil(list.length/AUDIT_PER_PAGE);
+  if(auditPage>=totalPages) auditPage=totalPages-1;
+  const start=auditPage*AUDIT_PER_PAGE;
+  const page=list.slice(start,start+AUDIT_PER_PAGE);
+  tbody.innerHTML=page.map(a=>{
+    const when=a.createdAt?new Date(a.createdAt).toLocaleString('en-NZ',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'-';
+    return `<tr>
+      <td style="font-size:12px;color:var(--text-muted)">${when}</td>
+      <td><strong style="font-size:13px">${esc(a.userName)}</strong></td>
+      <td><span class="audit-action-${esc(a.action)}">${esc(a.action)}</span></td>
+      <td><span class="badge badge-${a.entityType==='equipment'?'camera':a.entityType==='user'?'approved':'active'}" style="font-size:11px">${esc(a.entityType)}</span></td>
+      <td style="font-size:13px">${esc(a.entityName)}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${esc(a.details)}</td>
+    </tr>`;
+  }).join('');
+  const pag=document.getElementById('audit-pagination');
+  pag.style.display='flex';
+  document.getElementById('audit-page-info').textContent=`Showing ${start+1}–${Math.min(start+AUDIT_PER_PAGE,list.length)} of ${list.length} entries`;
+  document.getElementById('audit-prev-btn').disabled=auditPage===0;
+  document.getElementById('audit-next-btn').disabled=auditPage>=totalPages-1;
+}
+function changeAuditPage(dir){ auditPage+=dir; renderAuditLog(); }
+
+// ══════════════════════════════════════════════════════════
+//  BOOKING CALENDAR
+// ══════════════════════════════════════════════════════════
+let calYear=new Date().getFullYear();
+let calMonth=new Date().getMonth();
+
+function calPrevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+
+function renderCalendar(){
+  const locF=document.getElementById('cal-filter-loc').value;
+  const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-title').textContent=monthNames[calMonth]+' '+calYear;
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const today=new Date().toISOString().split('T')[0];
+  // Gather bookings that overlap this month
+  const mStart=`${calYear}-${String(calMonth+1).padStart(2,'0')}-01`;
+  const mEnd=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(daysInMonth).padStart(2,'0')}`;
+  const relevant=DB.bookings.filter(b=>{
+    if(b.status==='rejected'||b.status==='returned') return false;
+    if(b.dateTo<mStart||b.dateFrom>mEnd) return false;
+    if(locF){ const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{}; if(eq.location!==locF) return false; }
+    return true;
+  });
+  // Build day cells
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html=dayNames.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+  // Pad before first day
+  for(let i=0;i<firstDay;i++) html+=`<div class="cal-cell other-month"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=dateStr===today;
+    const dayBookings=relevant.filter(b=>b.dateFrom<=dateStr&&b.dateTo>=dateStr);
+    const shown=dayBookings.slice(0,3);
+    const extra=dayBookings.length-shown.length;
+    const events=shown.map(b=>{
+      const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
+      return `<div class="cal-event status-${b.status}" title="${esc(eq.name)} — ${esc(b.userName)}">${esc(eq.name||'?')}</div>`;
+    }).join('');
+    html+=`<div class="cal-cell${isToday?' today':''}" onclick="showCalDay('${dateStr}')">
+      <div class="cal-date">${d}</div>
+      ${events}
+      ${extra>0?`<div class="cal-more">+${extra} more</div>`:''}
+    </div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=html;
+}
+
+function showCalDay(dateStr){
+  const locF=document.getElementById('cal-filter-loc').value;
+  const dayBookings=DB.bookings.filter(b=>{
+    if(b.status==='rejected'||b.status==='returned') return false;
+    if(b.dateFrom>dateStr||b.dateTo<dateStr) return false;
+    if(locF){ const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{}; if(eq.location!==locF) return false; }
+    return true;
+  });
+  document.getElementById('cal-day-title').textContent=`Bookings on ${fmtDate(dateStr)} (${dayBookings.length})`;
+  document.getElementById('cal-day-panel').style.display='block';
+  const tbody=document.getElementById('cal-day-table');
+  if(!dayBookings.length){tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No bookings on this day</td></tr>`;return;}
+  tbody.innerHTML=dayBookings.map(b=>{
+    const eq=DB.equipment.find(e=>e.id===b.equipmentId)||{};
+    return `<tr><td><strong>${esc(eq.name)||'Unknown'}</strong><br/><span class="text-muted" style="font-size:11px">${esc(eq.location)||''}</span></td><td>${esc(b.userName)}</td><td>${fmtDate(b.dateFrom)}</td><td>${fmtDate(b.dateTo)}</td><td><span class="badge badge-${esc(b.status)}">${esc(b.status)}</span></td></tr>`;
+  }).join('');
+  // Scroll into view
+  document.getElementById('cal-day-panel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ══════════════════════════════════════════════════════════
+//  STUDENT CANCEL BOOKING
+// ══════════════════════════════════════════════════════════
+function cancelStudentBooking(bookingId){
+  const b=DB.bookings.find(x=>x.id===bookingId);
+  if(!b||b.userId!==currentUser.id||b.status!=='pending'){ toast('Cannot cancel this booking.','error'); return; }
+  if(!confirm('Cancel this booking request?')) return;
+  b.status='rejected';
+  b.teacherNote='Cancelled by student';
+  saveDB();
+  renderMyBookings();
+  renderStudentHome();
+  toast('Booking request cancelled.','info');
+  addAuditLog('reject','booking',bookingId,DB.equipment.find(e=>e.id===b.equipmentId)?.name||'?','Cancelled by student');
+}
+
 
 // ══════════════════════════════════════════════════════════
 //  BOOT
