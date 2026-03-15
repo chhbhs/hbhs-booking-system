@@ -1481,7 +1481,8 @@ function renderAdminEquip(resetPage){
   const eDir=equipSort.dir==='asc'?1:-1;
   items=[...items].sort((a,b)=>{
     let av='',bv='';
-    if(equipSort.col==='asset'){av=a.assetId||a.serial||'';bv=b.assetId||b.serial||'';}
+    if(equipSort.col==='asset'){av=a.assetId||'';bv=b.assetId||'';}
+    else if(equipSort.col==='serial'){av=a.serial||'';bv=b.serial||'';}
     else if(equipSort.col==='type'){av=a.itemType||'';bv=b.itemType||'';}
     else if(equipSort.col==='category'){av=a.category||'';bv=b.category||'';}
     else if(equipSort.col==='location'){av=a.location||'';bv=b.location||'';}
@@ -1492,16 +1493,17 @@ function renderAdminEquip(resetPage){
   // Render thead
   const eTh=(label,col,w)=>{const active=equipSort.col===col;return `<th class="sortable${active?' sort-'+equipSort.dir:''}" onclick="setEquipSort('${col}')" style="width:${w}">${label}</th>`;};
   const head=document.getElementById('admin-equip-head');
-  if(head){head.closest('table').style.tableLayout='fixed';head.innerHTML=`<tr>${eTh('Asset ID','asset','9%')}${eTh('Equipment','name','24%')}${eTh('Type','type','12%')}${eTh('Category','category','15%')}${eTh('Location','location','14%')}${eTh('Status','status','10%')}<th style="width:16%">Actions</th></tr>`;}
+  if(head){head.closest('table').style.tableLayout='fixed';head.innerHTML=`<tr>${eTh('Asset ID','asset','8%')}${eTh('Equipment','name','20%')}${eTh('Serial','serial','10%')}${eTh('Type','type','10%')}${eTh('Category','category','13%')}${eTh('Location','location','12%')}${eTh('Status','status','10%')}<th style="width:17%">Actions</th></tr>`;}
   const tbody=document.getElementById('admin-equip-table');
-  if(!items.length){ tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">📦</div><p>No equipment found</p></div></td></tr>`; document.getElementById('equip-pagination').style.display='none'; return; }
+  if(!items.length){ tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">📦</div><p>No equipment found</p></div></td></tr>`; document.getElementById('equip-pagination').style.display='none'; return; }
   const totalPages=Math.ceil(items.length/EQUIP_PER_PAGE);
   if(equipPage>=totalPages) equipPage=totalPages-1;
   const start=equipPage*EQUIP_PER_PAGE;
   const page=items.slice(start,start+EQUIP_PER_PAGE);
   tbody.innerHTML=page.map(e=>`<tr>
-    <td><code>${e.assetId||e.serial||'N/A'}</code></td>
+    <td><code>${e.assetId||'—'}</code></td>
     <td><strong>${catIcon(e.category)} ${e.name}</strong>${e.manufacturer||e.model?`<br/><span class="text-muted" style="font-size:11px">${[e.manufacturer,e.model].filter(Boolean).join(' · ')}</span>`:''}</td>
+    <td><code style="font-size:12px">${e.serial||'—'}</code></td>
     <td><span style="font-size:12px;color:var(--text-muted)">${e.itemType||'-'}</span></td>
     <td><span class="badge badge-${catBadge(e.category)}">${e.category}</span></td>
     <td>${e.location}</td>
