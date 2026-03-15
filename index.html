@@ -901,12 +901,13 @@
     <h2 id="user-modal-title">Add User</h2>
     <input type="hidden" id="user-edit-id"/>
     <div class="form-grid">
-      <div class="field"><label>Full Name *</label><input type="text" id="user-name" placeholder="e.g. John Doe"/></div>
-      <div class="field"><label>Username *</label><input type="text" id="user-username" placeholder="e.g. jdoe"/></div>
+      <div class="field"><label>Full Name *</label><input type="text" id="user-name" placeholder="e.g. John Doe" oninput="autoFillStudentUsername()"/></div>
+      <div class="field"><label>Username *</label><input type="text" id="user-username" placeholder="e.g. jdoe"/><p id="username-hint" style="font-size:11px;color:var(--text-muted);margin-top:3px;display:none">Auto-generated from name and year started</p></div>
       <div class="field"><label>Password *</label><input type="password" id="user-password" placeholder="Leave blank to keep existing"/></div>
       <div class="field"><label>Role *</label>
-        <select id="user-role" onchange="toggleStudentFields()">
+        <select id="user-role" onchange="toggleStudentFields(); autoFillStudentUsername();">
           <option value="student">Student</option>
+          <option value="student_leader">Student Leader</option>
           <option value="staff">Staff</option>
           <option value="admin">Admin</option>
         </select></div>
@@ -921,7 +922,7 @@
       <div class="section-title">Student Details</div>
       <div class="form-grid">
         <div class="field"><label>Student ID *</label><input type="text" id="user-student-id" placeholder="e.g. STU2024001"/></div>
-        <div class="field"><label>Form Class *</label><input type="text" id="user-prefix" placeholder="e.g. 13H"/></div>
+        <div class="field" id="field-year-started"><label>Year Started *</label><input type="number" id="user-year-started" placeholder="e.g. 2026" min="2000" max="2040" oninput="autoFillStudentUsername()"/></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1059,14 +1060,14 @@ let pendingEmailData = null;
 let importRows = [];
 
 // ── Field mappers: Supabase (snake_case) ↔ JS (camelCase) ──
-function sbToUser(r)    { return { id:r.id, username:r.username, password:r.password, name:r.name, role:r.role, email:r.email||'', studentId:r.student_id||'', prefix:r.prefix||'', memberSince:r.member_since||'' }; }
-function userToSb(u)    { return { id:u.id, username:u.username, password:u.password, name:u.name, role:u.role, email:u.email||null, student_id:u.studentId||null, prefix:u.prefix||null, member_since:u.memberSince||null }; }
+function sbToUser(r)    { return { id:r.id, username:r.username, password:r.password, name:r.name, role:r.role, email:r.email||'', studentId:r.student_id||'', memberSince:r.member_since||'' }; }
+function userToSb(u)    { return { id:u.id, username:u.username, password:u.password, name:u.name, role:u.role, email:u.email||null, student_id:u.studentId||null, member_since:u.memberSince||null }; }
 function sbToEquip(r)   { return { id:r.id, name:r.name, category:r.category, itemType:r.item_type||'', location:r.location, status:r.status, serial:r.serial||'', assetId:r.asset_id||'', manufacturer:r.manufacturer||'', model:r.model||'', description:r.description||'', maintenanceNote:r.maintenance_note||'', maintenanceReturnDate:r.maintenance_return_date||'', photoUrl:r.photo_url||'' }; }
 function equipToSb(e)   { return { id:e.id, name:e.name, category:e.category, item_type:e.itemType||null, location:e.location, status:e.status, serial:e.serial||null, asset_id:e.assetId||null, manufacturer:e.manufacturer||null, model:e.model||null, description:e.description||null, maintenance_note:e.maintenanceNote||null, maintenance_return_date:e.maintenanceReturnDate||null, photo_url:e.photoUrl||null }; }
 function sbToAudit(r)   { return { id:r.id, userId:r.user_id, userName:r.user_name||'', action:r.action, entityType:r.entity_type, entityId:r.entity_id||'', entityName:r.entity_name||'', details:r.details||'', createdAt:r.created_at }; }
 function auditToSb(a)   { return { id:a.id, user_id:a.userId, user_name:a.userName||null, action:a.action, entity_type:a.entityType, entity_id:a.entityId||null, entity_name:a.entityName||null, details:a.details||null }; }
-function sbToBooking(r) { return { id:r.id, userId:r.user_id, userName:r.user_name||'', studentId:r.student_id||'', prefix:r.prefix||'', equipmentId:r.equipment_id, dateFrom:r.date_from, dateTo:r.date_to, notes:r.notes||'', status:r.status, teacherNote:r.teacher_note||'', resolvedBy:r.resolved_by||null, resolvedAt:r.resolved_at||null, returnedAt:r.returned_at||null, returnedBy:r.returned_by||null, conditionOnReturn:r.condition_on_return||'', conditionNotes:r.condition_notes||'', createdAt:r.created_at }; }
-function bookingToSb(b) { return { id:b.id, user_id:b.userId, user_name:b.userName||null, student_id:b.studentId||null, prefix:b.prefix||null, equipment_id:b.equipmentId, date_from:b.dateFrom, date_to:b.dateTo, notes:b.notes||null, status:b.status, teacher_note:b.teacherNote||null, resolved_by:b.resolvedBy||null, resolved_at:b.resolvedAt||null, returned_at:b.returnedAt||null, returned_by:b.returnedBy||null, condition_on_return:b.conditionOnReturn||null, condition_notes:b.conditionNotes||null, created_at:b.createdAt }; }
+function sbToBooking(r) { return { id:r.id, userId:r.user_id, userName:r.user_name||'', studentId:r.student_id||'', equipmentId:r.equipment_id, dateFrom:r.date_from, dateTo:r.date_to, notes:r.notes||'', status:r.status, teacherNote:r.teacher_note||'', resolvedBy:r.resolved_by||null, resolvedAt:r.resolved_at||null, returnedAt:r.returned_at||null, returnedBy:r.returned_by||null, conditionOnReturn:r.condition_on_return||'', conditionNotes:r.condition_notes||'', createdAt:r.created_at }; }
+function bookingToSb(b) { return { id:b.id, user_id:b.userId, user_name:b.userName||null, student_id:b.studentId||null, equipment_id:b.equipmentId, date_from:b.dateFrom, date_to:b.dateTo, notes:b.notes||null, status:b.status, teacher_note:b.teacherNote||null, resolved_by:b.resolvedBy||null, resolved_at:b.resolvedAt||null, returned_at:b.returnedAt||null, returned_by:b.returnedBy||null, condition_on_return:b.conditionOnReturn||null, condition_notes:b.conditionNotes||null, created_at:b.createdAt }; }
 function sbToNotif(r)   { return { id:r.id, userId:r.user_id, message:r.message, type:r.type||'info', bookingId:r.booking_id||null, read:r.read||false, createdAt:r.created_at }; }
 function notifToSb(n)   { return { id:n.id, user_id:n.userId, message:n.message, type:n.type||'info', booking_id:n.bookingId||null, read:n.read||false, created_at:n.createdAt }; }
 
@@ -1137,6 +1138,26 @@ async function initDB(){
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).substr(2,5); }
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
+function generateStudentUsername(fullName, yearStarted) {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length < 2) return '';
+  const first = parts[0];
+  const last = parts.slice(1).join('');
+  const digit = String(yearStarted).slice(-1);
+  const initial = first[0].toLowerCase();
+  const surname = last.replace(/[^a-zA-Z]/g, '').substring(0, 6).toLowerCase();
+  if (!digit || !initial || !surname) return '';
+  const base = digit + initial + surname;
+  const editId = document.getElementById('user-edit-id')?.value || '';
+  const taken = DB.users
+    .filter(u => u.id !== editId)
+    .map(u => u.username.toLowerCase());
+  if (!taken.includes(base)) return base;
+  let n = 2;
+  while (taken.includes(base + n)) n++;
+  return base + n;
+}
+
 // ══════════════════════════════════════════════════════════
 //  AUTH
 // ══════════════════════════════════════════════════════════
@@ -1186,8 +1207,9 @@ function doLogout(){
 //  APP INIT
 // ══════════════════════════════════════════════════════════
 function initAppForUser(){
+  const roleLabel={'student':'Student','student_leader':'Student Leader','staff':'Staff','admin':'Administrator'};
   document.getElementById('sb-name').textContent=currentUser.name;
-  document.getElementById('sb-role').textContent=currentUser.role.toUpperCase();
+  document.getElementById('sb-role').textContent=roleLabel[currentUser.role]||currentUser.role.toUpperCase();
   document.getElementById('topbar-date').textContent=new Date().toLocaleDateString('en-NZ',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   renderSidebar();
   if(currentUser.role==='student') showView('view-student-home');
@@ -1201,6 +1223,9 @@ function renderSidebar(){
   let h='';
   if(r==='student'){
     h+=ns('Student')+ni('🏠','Dashboard','view-student-home')+ni('📦','Browse & Book','view-student-browse')+ni('📋','My Bookings','view-student-bookings');
+  } else if(r==='student_leader'){
+    h+=ns('Bookings')+ni('🏠','Dashboard','view-staff-home')+ni('⏳','Approve Bookings','view-staff-approvals')+ni('📋','All Bookings','view-admin-bookings')+ni('📅','Calendar','view-calendar');
+    h+=ns('My Account')+ni('📦','Browse & Book','view-student-browse')+ni('📋','My Bookings','view-student-bookings');
   } else if(r==='staff'){
     h+=ns('Staff')+ni('🏠','Dashboard','view-staff-home')+ni('⏳','Approve Bookings','view-staff-approvals')+ni('📋','All Bookings','view-admin-bookings')+ni('📅','Calendar','view-calendar');
     h+=ns('Management')+ni('🎒','Equipment','view-admin-equipment')+ni('👤','Users','view-admin-users');
@@ -1216,6 +1241,10 @@ function ni(icon,label,view){ return `<div class="nav-item" onclick="showView('$
 
 function showView(id){
   closeSidebarOnMobile();
+  // Guard equipment/user management from student_leader
+  if(currentUser.role==='student_leader'&&(id==='view-admin-equipment'||id==='view-admin-users'||id==='view-audit-log')){
+    toast('Access restricted.','error'); return;
+  }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const v=document.getElementById(id); if(v) v.classList.add('active');
@@ -1238,7 +1267,7 @@ function showView(id){
 function updatePendingBadge(){
   const c=DB.bookings.filter(b=>b.status==='pending').length;
   const el=document.getElementById('pending-badge');
-  if(c>0&&currentUser.role!=='student'){ el.textContent=c; el.style.display='inline-block'; }
+  if(c>0&&(currentUser.role==='staff'||currentUser.role==='admin'||currentUser.role==='student_leader')){ el.textContent=c; el.style.display='inline-block'; }
   else el.style.display='none';
 }
 
@@ -1436,10 +1465,10 @@ function submitBooking(){
   if(eq.status==='unavailable'){ toast('This equipment is currently unavailable.','error'); return; }
   const conflict=DB.bookings.some(b=>b.equipmentId===selectedEquipId&&(b.status==='approved'||b.status==='active'||b.status==='pending')&&!(to<b.dateFrom||from>b.dateTo));
   if(conflict){ toast('This equipment already has a booking for those dates.','error'); return; }
-  const booking={id:uid(),userId:currentUser.id,userName:currentUser.name,studentId:currentUser.studentId||'',prefix:currentUser.prefix||'',equipmentId:selectedEquipId,dateFrom:from,dateTo:to,notes,status:'pending',teacherNote:'',createdAt:Date.now()};
+  const booking={id:uid(),userId:currentUser.id,userName:currentUser.name,studentId:currentUser.studentId||'',equipmentId:selectedEquipId,dateFrom:from,dateTo:to,notes,status:'pending',teacherNote:'',createdAt:Date.now()};
   DB.bookings.push(booking);
-  // Notify all staff/admin
-  DB.users.filter(u=>u.role==='staff'||u.role==='admin').forEach(u=>{
+  // Notify all staff/admin/student_leader
+  DB.users.filter(u=>u.role==='staff'||u.role==='admin'||u.role==='student_leader').forEach(u=>{
     createNotification(u.id,`📋 New booking request from ${currentUser.name} for ${eq.name} (${fmtDate(from)} – ${fmtDate(to)})`, 'pending', booking.id);
   });
   addAuditLog('booking','booking',booking.id,eq.name||'?',`${currentUser.name} requested ${fmtDate(from)}–${fmtDate(to)}`);
@@ -1585,7 +1614,6 @@ function openApproveModal(bookingId){
   document.getElementById('approve-modal-title').textContent=`Review Booking — ${b.userName}`;
   document.getElementById('approve-booking-details').innerHTML=`
     <div class="booking-detail-row"><span>Student</span><span>${b.userName} (${b.studentId||'N/A'})</span></div>
-    <div class="booking-detail-row"><span>Form Class</span><span>${b.prefix||'N/A'}</span></div>
     <div class="booking-detail-row"><span>Email</span><span>${student.email||'<em>not on file</em>'}</span></div>
     <div class="booking-detail-row"><span>Equipment</span><span>${eq.name||'Unknown'} · ${eq.serial||''}</span></div>
     <div class="booking-detail-row"><span>Location</span><span>${eq.location||'N/A'}</span></div>
@@ -1750,6 +1778,7 @@ function deleteEquipFromModal(){
 }
 
 function saveEquipment(){
+  if(currentUser.role!=='staff'&&currentUser.role!=='admin'){ toast('Only staff and admins can modify equipment.','error'); return; }
   const id=document.getElementById('equip-edit-id').value;
   const name=document.getElementById('equip-name').value.trim();
   const cat=document.getElementById('equip-cat').value;
@@ -2031,7 +2060,7 @@ function renderAdminUsers(){
     <td><strong>${esc(u.name)}</strong></td>
     <td><code>${esc(u.username)}</code></td>
     <td>${u.email?esc(u.email):'<span class="text-muted">—</span>'}</td>
-    <td><span class="badge badge-${u.role==='admin'?'active':u.role==='staff'?'approved':'pending'}">${esc(u.role)}</span></td>
+    <td><span class="badge badge-${u.role==='admin'?'active':u.role==='staff'?'approved':u.role==='student_leader'?'gold':'pending'}">${esc(u.role)}</span></td>
     <td>${esc(u.studentId)||'-'}</td>
     <td>${esc(u.memberSince)||'-'}</td>
     <td>${bookingCell}</td>
@@ -2055,7 +2084,7 @@ function openAdminBookModal(userId){
   document.getElementById('admin-book-student-banner').innerHTML=
     `<div style="width:44px;height:44px;border-radius:50%;background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;">👤</div>`+
     `<div><div style="font-weight:700;font-size:15px;">${u.name}</div>`+
-    `<div style="font-size:12px;color:var(--text-muted);">${u.prefix||u.role} &nbsp;·&nbsp; ${u.username} &nbsp;·&nbsp; ${u.email||'no email'}</div></div>`;
+    `<div style="font-size:12px;color:var(--text-muted);">${u.role} &nbsp;·&nbsp; ${u.username} &nbsp;·&nbsp; ${u.email||'no email'}</div></div>`;
   // Dates default today → +7
   const today=new Date().toISOString().split('T')[0];
   const week=new Date(); week.setDate(week.getDate()+7);
@@ -2135,7 +2164,7 @@ function submitAdminBooking(){
   const conflict=DB.bookings.some(b=>b.equipmentId===adminBookEquipId&&(b.status==='approved'||b.status==='active'||b.status==='pending')&&!(to<b.dateFrom||from>b.dateTo));
   if(conflict){ toast('This equipment is already booked for those dates.','error'); return; }
   const u=DB.users.find(x=>x.id===adminBookUserId)||{};
-  const booking={id:uid(),userId:adminBookUserId,userName:u.name,studentId:u.studentId||'',prefix:u.prefix||'',equipmentId:adminBookEquipId,dateFrom:from,dateTo:to,notes,status:'approved',teacherNote:'Booked by admin',createdAt:Date.now()};
+  const booking={id:uid(),userId:adminBookUserId,userName:u.name,studentId:u.studentId||'',equipmentId:adminBookEquipId,dateFrom:from,dateTo:to,notes,status:'approved',teacherNote:'Booked by admin',createdAt:Date.now()};
   DB.bookings.push(booking);
   createNotification(adminBookUserId,`✅ ${eq.name} has been booked for you by an admin (${fmtDate(from)} – ${fmtDate(to)}).`,'approved',booking.id);
   saveDB();
@@ -2196,7 +2225,7 @@ function renderEquipBookStudentList(){
     return `<div onclick="selectEquipBookStudent('${u.id}')" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:${sel?'#eff6ff':''};transition:background .12s;">
       <div><strong style="font-size:13px">${u.name}</strong><span style="font-size:11px;color:var(--text-muted);margin-left:8px">${u.studentId||u.username}</span></div>
       <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:11px;color:var(--text-muted)">${u.prefix||u.role}</span>
+        <span style="font-size:11px;color:var(--text-muted)">${u.role}</span>
         ${sel?'<span style="color:var(--navy);font-weight:700;font-size:15px">✓</span>':''}
       </div>
     </div>`;
@@ -2210,7 +2239,7 @@ function selectEquipBookStudent(userId){
   el.style.display='flex';
   el.innerHTML=
     `<div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">👤</div>`+
-    `<div><div style="font-weight:700">${u.name}</div><div style="font-size:12px;color:var(--text-muted)">${u.prefix||u.role} &nbsp;·&nbsp; ${u.username}${u.email?' &nbsp;·&nbsp; '+u.email:''}</div></div>`;
+    `<div><div style="font-weight:700">${u.name}</div><div style="font-size:12px;color:var(--text-muted)">${u.role} &nbsp;·&nbsp; ${u.username}${u.email?' &nbsp;·&nbsp; '+u.email:''}</div></div>`;
   renderEquipBookStudentList();
 }
 
@@ -2229,7 +2258,7 @@ function submitEquipBooking(){
   const conflict=DB.bookings.some(b=>b.equipmentId===equipBookEquipId&&(b.status==='approved'||b.status==='active'||b.status==='pending')&&!(to<b.dateFrom||from>b.dateTo));
   if(conflict){ toast('This equipment is already booked for those dates.','error'); return; }
   const u=DB.users.find(x=>x.id===equipBookUserId)||{};
-  const booking={id:uid(),userId:equipBookUserId,userName:u.name,studentId:u.studentId||'',prefix:u.prefix||'',equipmentId:equipBookEquipId,dateFrom:from,dateTo:to,notes,status:'approved',teacherNote:'Booked by staff',createdAt:Date.now()};
+  const booking={id:uid(),userId:equipBookUserId,userName:u.name,studentId:u.studentId||'',equipmentId:equipBookEquipId,dateFrom:from,dateTo:to,notes,status:'approved',teacherNote:'Booked by staff',createdAt:Date.now()};
   DB.bookings.push(booking);
   createNotification(equipBookUserId,`✅ ${eq.name} has been booked for you (${fmtDate(from)} – ${fmtDate(to)}).`,'approved',booking.id);
   saveDB();
@@ -2241,8 +2270,9 @@ function submitEquipBooking(){
 
 function openAddUserModal(){
   document.getElementById('user-modal-title').textContent='Add User';
-  ['user-edit-id','user-name','user-username','user-password','user-email','user-student-id','user-prefix'].forEach(i=>document.getElementById(i).value='');
+  ['user-edit-id','user-name','user-username','user-password','user-email','user-student-id','user-year-started'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('user-role').value='student';
+  document.getElementById('username-hint').style.display='none';
   document.getElementById('user-delete-btn').style.display='none';
   toggleStudentFields();
   openModal('modal-user');
@@ -2258,32 +2288,57 @@ function openEditUser(id){
   document.getElementById('user-email').value=u.email||'';
   document.getElementById('user-role').value=u.role;
   document.getElementById('user-student-id').value=u.studentId||'';
-  document.getElementById('user-prefix').value=u.prefix||'';
+  document.getElementById('user-year-started').value=u.yearStarted||'';
+  document.getElementById('username-hint').style.display='none';
   document.getElementById('user-delete-btn').style.display=(currentUser.role==='admin'&&u.id!==currentUser.id)?'inline-flex':'none';
   toggleStudentFields();
   openModal('modal-user');
 }
 
+function autoFillStudentUsername() {
+  const role = document.getElementById('user-role').value;
+  if (role !== 'student' && role !== 'student_leader') return;
+  const isEdit = !!document.getElementById('user-edit-id').value;
+  if (isEdit) return;
+  const name = document.getElementById('user-name').value;
+  const year = document.getElementById('user-year-started').value;
+  if (!name || !year || name.trim().split(/\s+/).length < 2) return;
+  const generated = generateStudentUsername(name, year);
+  if (!generated) return;
+  document.getElementById('user-username').value = generated;
+  document.getElementById('user-password').value = generated;
+  document.getElementById('username-hint').style.display = 'block';
+}
+
 function toggleStudentFields(){
-  document.getElementById('student-fields').style.display=document.getElementById('user-role').value==='student'?'block':'none';
+  const isStudent = document.getElementById('user-role').value === 'student' || document.getElementById('user-role').value === 'student_leader';
+  document.getElementById('student-fields').style.display=isStudent?'block':'none';
 }
 
 function saveUser(){
+  if(currentUser.role!=='staff'&&currentUser.role!=='admin'){ toast('Only staff and admins can manage users.','error'); return; }
   const id=document.getElementById('user-edit-id').value;
   const name=document.getElementById('user-name').value.trim();
-  const username=document.getElementById('user-username').value.trim();
-  const password=document.getElementById('user-password').value;
+  let username=document.getElementById('user-username').value.trim();
+  let password=document.getElementById('user-password').value;
   const email=document.getElementById('user-email').value.trim();
   const role=document.getElementById('user-role').value;
   const studentId=document.getElementById('user-student-id').value.trim();
-  const prefix=document.getElementById('user-prefix').value.trim();
+  const yearStarted=document.getElementById('user-year-started').value;
+  // Auto-generate username for new students if not manually set
+  if (!id && (role === 'student' || role === 'student_leader') && !username) {
+    const generated = generateStudentUsername(name, yearStarted);
+    if (!generated) { toast('Could not generate username — please enter name and year started.', 'error'); return; }
+    username = generated;
+    password = generated;
+  }
   if(!name||!username){ toast('Name and username are required.','error'); return; }
   if(!id&&!password){ toast('Password is required for new users.','error'); return; }
-  if(role==='student'&&(!studentId||!prefix)){ toast('Student ID and Form Class are required for students.','error'); return; }
+  if(role==='student'&&!studentId){ toast('Student ID is required for students.','error'); return; }
   if(DB.users.find(u=>u.username===username&&u.id!==id)){ toast('Username already taken.','error'); return; }
   let _uid2 = id;
-  if(id){ const u=DB.users.find(x=>x.id===id); Object.assign(u,{name,username,email,role,studentId,prefix}); if(password) u.password=password; if(!u.memberSince) u.memberSince=''; addAuditLog('edit','user',id,name,'Role: '+role); }
-  else { const u={id:uid(),name,username,password,email,role,studentId,prefix}; DB.users.push(u); _uid2=u.id; addAuditLog('create','user',_uid2,name,'Added as '+role); }
+  if(id){ const u=DB.users.find(x=>x.id===id); Object.assign(u,{name,username,email,role,studentId,yearStarted}); if(password) u.password=password; if(!u.memberSince) u.memberSince=''; addAuditLog('edit','user',id,name,'Role: '+role); }
+  else { const u={id:uid(),name,username,password,email,role,studentId,yearStarted}; DB.users.push(u); _uid2=u.id; addAuditLog('create','user',_uid2,name,'Added as '+role); }
   saveDB(); _syncUser(_uid2); closeModal('modal-user'); renderAdminUsers();
   toast(id?'User updated.':'User added.','success');
 }
