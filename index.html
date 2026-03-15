@@ -281,7 +281,26 @@
     .booking-detail-row span:last-child{font-weight:600;}
     .section-title{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--text-muted);margin-bottom:14px;}
     code{background:var(--bg);padding:2px 7px;border-radius:5px;font-size:12px;font-family:'SF Mono','Menlo',monospace;color:var(--text);}
-    @media(max-width:768px){.sidebar{transform:translateX(-100%)}.main-content{margin-left:0}.form-grid{grid-template-columns:1fr}.form-grid.three{grid-template-columns:1fr}.page-content{padding:18px 16px}}
+    /* ── MOBILE HAMBURGER ── */
+    .hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;width:38px;height:38px;background:var(--bg);border:1px solid var(--border-strong);border-radius:var(--radius-sm);cursor:pointer;padding:8px;flex-shrink:0;}
+    .hamburger span{display:block;height:2px;background:var(--text);border-radius:2px;transition:all .25s;}
+    .hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+    .hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0);}
+    .hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+    .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+    .sidebar-backdrop.open{display:block;}
+    @media(max-width:768px){
+      .hamburger{display:flex;}
+      .sidebar{transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
+      .sidebar.open{transform:translateX(0);}
+      .main-content{margin-left:0;}
+      .form-grid{grid-template-columns:1fr;}
+      .form-grid.three{grid-template-columns:1fr;}
+      .page-content{padding:18px 16px;}
+      .topbar{padding:12px 16px;}
+      .stats-grid{grid-template-columns:repeat(2,1fr);}
+      .notif-panel{width:calc(100vw - 32px);right:-8px;}
+    }
   </style>
 </head>
 <body>
@@ -320,6 +339,9 @@
   </div>
 </div>
 
+<!-- ══════════════════ SIDEBAR BACKDROP ══════════════════ -->
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
 <!-- ══════════════════ APP ══════════════════ -->
 <div id="app">
   <div class="app-layout">
@@ -343,6 +365,9 @@
     <div class="main-content">
       <div class="topbar">
         <div class="flex">
+          <button class="hamburger" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
+          </button>
           <h1 id="page-title">Dashboard</h1>
           <span class="badge-count" id="pending-badge" style="display:none"></span>
         </div>
@@ -958,8 +983,26 @@ function doLogin(){
   initAppForUser();
 }
 
+function toggleSidebar(){
+  const sidebar=document.querySelector('.sidebar');
+  const backdrop=document.getElementById('sidebar-backdrop');
+  const hamburger=document.getElementById('hamburger-btn');
+  const isOpen=sidebar.classList.contains('open');
+  sidebar.classList.toggle('open',!isOpen);
+  backdrop.classList.toggle('open',!isOpen);
+  hamburger.classList.toggle('open',!isOpen);
+}
+function closeSidebarOnMobile(){
+  if(window.innerWidth<=768){
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('sidebar-backdrop').classList.remove('open');
+    document.getElementById('hamburger-btn').classList.remove('open');
+  }
+}
+
 function doLogout(){
   currentUser=null;
+  closeSidebarOnMobile();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('login-user').value='';
@@ -998,6 +1041,7 @@ function ns(t){ return `<div class="nav-section">${t}</div>`; }
 function ni(icon,label,view){ return `<div class="nav-item" onclick="showView('${view}')" id="nav-${view}"><span class="icon">${icon}</span>${label}</div>`; }
 
 function showView(id){
+  closeSidebarOnMobile();
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const v=document.getElementById(id); if(v) v.classList.add('active');
@@ -1331,9 +1375,9 @@ function renderStaffApprovals(){
     return av.localeCompare(bv)*aDir;
   });
   // Render thead
-  const aTh=(label,col)=>{const active=approvalSort.col===col;return `<th class="sortable${active?' sort-'+approvalSort.dir:''}" onclick="setApprovalSort('${col}')">${label}</th>`;};
+  const aTh=(label,col,w)=>{const active=approvalSort.col===col;return `<th class="sortable${active?' sort-'+approvalSort.dir:''}" onclick="setApprovalSort('${col}')" style="width:${w}">${label}</th>`;};
   const head=document.getElementById('staff-approvals-head');
-  if(head) head.innerHTML=`<tr>${aTh('Student','student')}${aTh('Student ID','studentId')}${aTh('Equipment','equipment')}${aTh('Location','location')}${aTh('From','from')}${aTh('To','to')}${aTh('Status','status')}<th>Actions</th></tr>`;
+  if(head){head.closest('table').style.tableLayout='fixed';head.innerHTML=`<tr>${aTh('Student','student','13%')}${aTh('Student ID','studentId','10%')}${aTh('Equipment','equipment','20%')}${aTh('Location','location','13%')}${aTh('From','from','9%')}${aTh('To','to','9%')}${aTh('Status','status','10%')}<th style="width:16%">Actions</th></tr>`;}
   const tbody=document.getElementById('staff-approvals-table');
   if(!list.length){ tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">📭</div><p>Nothing to show</p></div></td></tr>`; return; }
   tbody.innerHTML=list.map(b=>{
@@ -1446,9 +1490,9 @@ function renderAdminEquip(resetPage){
     return av.localeCompare(bv)*eDir;
   });
   // Render thead
-  const eTh=(label,col)=>{const active=equipSort.col===col;return `<th class="sortable${active?' sort-'+equipSort.dir:''}" onclick="setEquipSort('${col}')">${label}</th>`;};
+  const eTh=(label,col,w)=>{const active=equipSort.col===col;return `<th class="sortable${active?' sort-'+equipSort.dir:''}" onclick="setEquipSort('${col}')" style="width:${w}">${label}</th>`;};
   const head=document.getElementById('admin-equip-head');
-  if(head) head.innerHTML=`<tr>${eTh('Asset ID','asset')}${eTh('Equipment','name')}${eTh('Type','type')}${eTh('Category','category')}${eTh('Location','location')}${eTh('Status','status')}<th>Actions</th></tr>`;
+  if(head){head.closest('table').style.tableLayout='fixed';head.innerHTML=`<tr>${eTh('Asset ID','asset','9%')}${eTh('Equipment','name','24%')}${eTh('Type','type','12%')}${eTh('Category','category','15%')}${eTh('Location','location','14%')}${eTh('Status','status','10%')}<th style="width:16%">Actions</th></tr>`;}
   const tbody=document.getElementById('admin-equip-table');
   if(!items.length){ tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">📦</div><p>No equipment found</p></div></td></tr>`; document.getElementById('equip-pagination').style.display='none'; return; }
   const totalPages=Math.ceil(items.length/EQUIP_PER_PAGE);
@@ -1757,15 +1801,15 @@ function renderAdminUsers(){
   if(countBar) countBar.textContent=users.length===DB.users.length?`${users.length} users total`:`Showing ${users.length} of ${DB.users.length} users`;
 
   // Render thead with sort arrows
-  const uTh=(label,col)=>{
+  const uTh=(label,col,w)=>{
     let active=false,dir='asc';
     if(col==='name'&&(sort==='name-asc'||sort==='name-desc')){active=true;dir=sort==='name-asc'?'asc':'desc';}
     else if(col==='role'&&sort==='role'){active=true;dir='asc';}
     else if(col==='member'&&(sort==='member-new'||sort==='member-old')){active=true;dir=sort==='member-new'?'asc':'desc';}
-    return `<th class="sortable${active?' sort-'+dir:''}" onclick="setUserColSort('${col}')">${label}</th>`;
+    return `<th class="sortable${active?' sort-'+dir:''}" onclick="setUserColSort('${col}')" style="width:${w}">${label}</th>`;
   };
   const head=document.getElementById('admin-users-head');
-  if(head) head.innerHTML=`<tr>${uTh('Name','name')}<th>Username</th><th>Email</th>${uTh('Role','role')}<th>Student ID</th>${uTh('Member Since','member')}<th>Bookings</th><th>Actions</th></tr>`;
+  if(head){head.closest('table').style.tableLayout='fixed';head.innerHTML=`<tr>${uTh('Name','name','14%')}<th style="width:12%">Username</th><th style="width:20%">Email</th>${uTh('Role','role','8%')}<th style="width:10%">Student ID</th>${uTh('Member Since','member','12%')}<th style="width:9%">Bookings</th><th style="width:15%">Actions</th></tr>`;}
 
   if(!users.length){
     tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">👤</div><p>No users found</p></div></td></tr>`;
@@ -2073,9 +2117,9 @@ function renderAdminBookings(){
     return av.localeCompare(bv)*bDir;
   });
   // Render thead
-  const bTh=(label,col)=>{const active=bookingsSort.col===col;return `<th class="sortable${active?' sort-'+bookingsSort.dir:''}" onclick="setBookingsSort('${col}')">${label}</th>`;};
+  const bTh=(label,col,w)=>{const active=bookingsSort.col===col;return `<th class="sortable${active?' sort-'+bookingsSort.dir:''}" onclick="setBookingsSort('${col}')" style="width:${w}">${label}</th>`;};
   const head=document.getElementById('admin-bookings-head');
-  if(head) head.innerHTML=`<tr>${bTh('Student','student')}${bTh('Student ID','studentId')}${bTh('Equipment','equipment')}${bTh('Location','location')}${bTh('From','from')}${bTh('To','to')}${bTh('Status','status')}<th>Actions</th></tr>`;
+  if(head){head.closest('table').style.tableLayout='fixed';head.innerHTML=`<tr>${bTh('Student','student','13%')}${bTh('Student ID','studentId','10%')}${bTh('Equipment','equipment','20%')}${bTh('Location','location','13%')}${bTh('From','from','9%')}${bTh('To','to','9%')}${bTh('Status','status','10%')}<th style="width:16%">Actions</th></tr>`;}
   const tbody=document.getElementById('admin-bookings-table');
   if(!list.length){ tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">📋</div><p>No bookings found</p></div></td></tr>`; return; }
   tbody.innerHTML=list.map(b=>{
